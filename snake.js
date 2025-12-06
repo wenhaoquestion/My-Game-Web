@@ -14,7 +14,7 @@ const GRID_COLOR = [40, 40, 70];
 const PANEL_COLOR = [15, 15, 25];
 const TEXT_COLOR = "#e6e6f0";
 const ACCENT_COLOR = "#5aaaff";
-const OBSTACLE_COLOR = "#785aa0";
+const OBSTACLE_COLOR = [120, 90, 160];
 
 const HIGHSCORE_KEY = "snake_highscore_web";
 
@@ -133,7 +133,9 @@ class Snake {
 
     step(wrap) {
         if (!this.alive) return;
+
         this.direction = { ...this.pendingDirection };
+
         const head = this.body[0];
         let nx = head.x + this.direction.x;
         let ny = head.y + this.direction.y;
@@ -153,12 +155,17 @@ class Snake {
 
         const newHead = { x: nx, y: ny };
 
-        // hit self
-        if (this.body.some(seg => seg.x === nx && seg.y === ny)) {
+        const bodyToCheck =
+            this.growPending > 0
+                ? this.body
+                : this.body.slice(0, this.body.length - 1);
+
+        if (bodyToCheck.some(seg => seg.x === nx && seg.y === ny)) {
             this.alive = false;
             return;
         }
 
+        // 正式移动
         this.body.unshift(newHead);
         if (this.growPending > 0) {
             this.growPending -= 1;
@@ -166,6 +173,7 @@ class Snake {
             this.body.pop();
         }
     }
+
 
     grow(amount = 1) {
         this.growPending += amount;
@@ -370,48 +378,57 @@ class SnakeGame {
     createLevels() {
         const levels = [];
 
-        // Free practice
+        // Level 0
         levels.push(new Level("Free Practice", []));
 
-        // Box Arena
-        const innerBox = [];
-        for (let x = 4; x < GRID_WIDTH - 4; x++) {
-            innerBox.push({ x, y: 4 });
-            innerBox.push({ x, y: GRID_HEIGHT - 5 });
+        // Level 1
+        const box = [];
+        // 上下边
+        for (let x = 0; x < GRID_WIDTH; x++) {
+            box.push({ x, y: 0 });
+            box.push({ x, y: GRID_HEIGHT - 1 });
         }
-        for (let y = 5; y < GRID_HEIGHT - 5; y++) {
-            innerBox.push({ x: 4, y });
-            innerBox.push({ x: GRID_WIDTH - 5, y });
+        // 左右边
+        for (let y = 1; y < GRID_HEIGHT - 1; y++) {
+            box.push({ x: 0, y });
+            box.push({ x: GRID_WIDTH - 1, y });
         }
-        levels.push(new Level("Box Arena", innerBox));
+        levels.push(new Level("Box Arena", box));
 
-        // Cross Maze
+        // Level 2
         const cross = [];
         const midX = Math.floor(GRID_WIDTH / 2);
         const midY = Math.floor(GRID_HEIGHT / 2);
-        for (let x = 3; x < GRID_WIDTH - 3; x++) {
+
+        // 水平线
+        for (let x = 0; x < GRID_WIDTH; x++) {
+            if (x === midX) continue;
             cross.push({ x, y: midY });
         }
-        for (let y = 3; y < GRID_HEIGHT - 3; y++) {
+        // 垂直线
+        for (let y = 0; y < GRID_HEIGHT; y++) {
+            if (y === midY) continue;
             cross.push({ x: midX, y });
         }
-        // remove center
-        const filtered = cross.filter(p => !(p.x === midX && p.y === midY));
-        levels.push(new Level("Cross Maze", filtered));
+        levels.push(new Level("Cross Maze", cross));
 
-        // Striped Corridor
+        // Level 3
         const stripes = [];
-        for (let x = 2; x < GRID_WIDTH - 2; x += 4) {
+        for (let x = 2; x < GRID_WIDTH - 2; x += 3) {
             for (let y = 2; y < GRID_HEIGHT - 2; y++) {
-                if (y >= 5 && y <= GRID_HEIGHT - 6) {
-                    stripes.push({ x, y });
-                }
+                stripes.push({ x, y });
             }
         }
         levels.push(new Level("Striped Corridor", stripes));
 
+
         this.levels = levels;
+
+        if (this.levelIndex < 0 || this.levelIndex >= this.levels.length) {
+            this.levelIndex = 0;
+        }
     }
+
 
     findSafeSpawn() {
         const obstacles = new Set(

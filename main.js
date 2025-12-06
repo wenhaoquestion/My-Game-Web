@@ -14,6 +14,40 @@ function showScreen(idToShow) {
     });
 }
 
+function switchToSnake() {
+    console.log("[main.js] Play Snake clicked");
+    showScreen("snake-screen");
+
+    if (!window.__snakeGameInitialized) {
+        if (typeof initSnakeGame === "function") {
+            initSnakeGame();              // 在 snake.js 里定义
+            window.__snakeGameInitialized = true;
+        } else {
+            console.error("initSnakeGame is not defined. Check snake.js.");
+        }
+    }
+}
+
+function switchTo2048() {
+    console.log("[main.js] Play 2048 clicked");
+    showScreen("game2048-screen");
+
+    if (!window.__game2048Initialized) {
+        if (typeof init2048Game === "function") {
+            init2048Game();              // 在 2048.js 里定义
+            window.__game2048Initialized = true;
+        } else {
+            console.error("init2048Game is not defined. Check 2048.js.");
+        }
+    }
+}
+
+function switchToMenu() {
+    console.log("[main.js] Back to menu");
+    showScreen("menu-screen");
+}
+
+
 document.addEventListener("DOMContentLoaded", () => {
     console.log("[main.js] DOM ready");
 
@@ -38,52 +72,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // ====== 进入 Snake ======
     if (playSnakeBtn) {
-        playSnakeBtn.addEventListener("click", () => {
-            console.log("[main.js] Play Snake clicked");
-            showScreen("snake-screen");
-
-            if (!window.__snakeGameInitialized) {
-                if (typeof initSnakeGame === "function") {
-                    initSnakeGame();              // 在 snake.js 里定义
-                    window.__snakeGameInitialized = true;
-                } else {
-                    console.error("initSnakeGame is not defined. Check snake.js.");
-                }
-            }
-        });
+        playSnakeBtn.addEventListener("click", switchToSnake);
     }
 
     // Snake 返回大厅
     if (backSnakeBtn) {
-        backSnakeBtn.addEventListener("click", () => {
-            console.log("[main.js] Back from Snake");
-            showScreen("menu-screen");
-        });
+        backSnakeBtn.addEventListener("click", switchToMenu);
     }
 
     // ====== 进入 2048 ======
     if (play2048Btn) {
-        play2048Btn.addEventListener("click", () => {
-            console.log("[main.js] Play 2048 clicked");
-            showScreen("game2048-screen");
-
-            if (!window.__game2048Initialized) {
-                if (typeof init2048Game === "function") {
-                    init2048Game();              // 在 2048.js 里定义
-                    window.__game2048Initialized = true;
-                } else {
-                    console.error("init2048Game is not defined. Check 2048.js.");
-                }
-            }
-        });
+        play2048Btn.addEventListener("click", switchTo2048);
     }
 
     // 2048 返回大厅
     if (back2048Btn) {
-        back2048Btn.addEventListener("click", () => {
-            console.log("[main.js] Back from 2048");
-            showScreen("menu-screen");
-        });
+        back2048Btn.addEventListener("click", switchToMenu);
     }
 
     // 默认显示大厅

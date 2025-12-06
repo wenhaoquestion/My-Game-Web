@@ -2,15 +2,15 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
-    <title>Wing's Web Arcade</title>
+    <title>Wenhao's Web Arcade</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 <div class="app-shell">
     <header class="app-header">
-        <h1>Wing's Web Arcade</h1>
-        <p>Mini games, smooth animations, all in your browser.</p>
+        <h1>Wenhao's Web Arcade</h1>
+        <p>Mini games.</p>
     </header>
 
     <!-- ====== 游戏大厅：可以不断加卡片 ====== -->
@@ -20,7 +20,6 @@
             <article class="game-card">
                 <div class="game-card-header">
                     <h2>Neon Snake</h2>
-                    <span class="badge badge-live">LIVE</span>
                 </div>
                 <p class="game-desc">
                     Classic snake with neon glow, levels, skins and power-ups.
@@ -41,7 +40,6 @@
             <article class="game-card">
                 <div class="game-card-header">
                     <h2>2048 Puzzle</h2>
-                    <span class="badge">New</span>
                 </div>
                 <p class="game-desc">
                     Slide and merge tiles to reach 2048 with smooth animations.
@@ -168,6 +166,18 @@
                             New Game
                         </button>
                     </div>
+
+                    <div class="info-card">
+                        <h3>Board Size</h3>
+                        <div class="size-buttons">
+                            <button class="btn small" data-board-size="3">3×3</button>
+                            <button class="btn small" data-board-size="4">4×4</button>
+                            <button class="btn small" data-board-size="5">5×5</button>
+                            <button class="btn small" data-board-size="6">6×6</button>
+                            <button class="btn small" data-board-size="7">7×7</button>
+                        </div>
+                    </div>
+
                 </aside>
             </div>
         </div>
@@ -175,7 +185,7 @@
 
 
     <footer class="app-footer">
-        <span>Built by Wing · Powered by HTML5 Canvas</span>
+        <span>Built by Wenhao · Powered by HTML5 Canvas</span>
     </footer>
 </div>
 

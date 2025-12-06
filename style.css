@@ -117,6 +117,7 @@ body {
     background: radial-gradient(circle at 0% 0%, rgba(255,255,255,0.06), transparent 50%);
     opacity: 0;
     transform: translate3d(-10px, -10px, 0);
+    pointer-events: none;
     transition: opacity var(--transition-med);
 }
 
@@ -465,6 +466,38 @@ body {
 /* 合并 tile bump 动画 */
 .tile-2048.tile-merged {
     animation: tile-bump 0.16s ease-out;
+}
+
+.tile-2048.tile-glow {
+    box-shadow:
+            0 0 20px rgba(255,255,255,0.3),
+            0 10px 30px rgba(0,0,0,0.8);
+}
+
+.tile-2048.tile-glow-strong {
+    box-shadow:
+            0 0 28px rgba(255,255,200,0.6),
+            0 14px 40px rgba(0,0,0,0.9);
+}
+
+.board-2048.board-pulse {
+    animation: boardPulse 0.18s ease-out;
+}
+
+.board-2048.board-pulse-strong {
+    animation: boardPulseStrong 0.28s ease-out;
+}
+
+@keyframes boardPulse {
+    0%   { transform: scale(1); box-shadow: 0 18px 60px rgba(0,0,0,0.9); }
+    40%  { transform: scale(1.02); box-shadow: 0 24px 70px rgba(255,255,255,0.12); }
+    100% { transform: scale(1); box-shadow: 0 18px 60px rgba(0,0,0,0.9); }
+}
+
+@keyframes boardPulseStrong {
+    0%   { transform: scale(1); }
+    30%  { transform: scale(1.04); box-shadow: 0 28px 90px rgba(255,230,160,0.55); }
+    100% { transform: scale(1); }
 }
 
 @keyframes tile-pop {

@@ -1,23 +1,30 @@
 // ================= 2048 Config =================
-const BOARD_SIZE = 4;
-const TILE_SIZE = 72;   // 要和 CSS 里的 tile 宽高一致
+
+// 默认棋盘大小
+const DEFAULT_BOARD_SIZE = 4;
+
+// 逻辑上的“参考”棋盘尺寸，用来算 tile size（和你 CSS 中的内框差不多）
+const REF_BOARD_INNER = 72 * 4 + 12 * 3;   // 对应你原来的 4×4 配置
 const TILE_GAP = 12;
 const BOARD_PADDING = 12;
-const BEST_KEY_2048 = "game2048_best";
 
-function loadBest2048() {
-    const raw = localStorage.getItem(BEST_KEY_2048);
+function bestKeyForSize(size) {
+    return `game2048_best_${size}x${size}`;
+}
+
+function loadBest2048(size) {
+    const raw = localStorage.getItem(bestKeyForSize(size));
     const n = parseInt(raw, 10);
     return Number.isFinite(n) ? n : 0;
 }
 
-function saveBest2048(score) {
-    localStorage.setItem(BEST_KEY_2048, String(score));
+function saveBest2048(size, score) {
+    localStorage.setItem(bestKeyForSize(size), String(score));
 }
 
 class Game2048 {
-    constructor(rootEl) {
-        this.rootEl = rootEl;
+    constructor(rootEl, options = {}) {
+        this.rootEl = rootEl; // .board-2048 元素
         this.bgEl = rootEl.querySelector("#board-2048-bg");
         this.tilesEl = rootEl.querySelector("#board-2048-tiles");
 
@@ -25,8 +32,11 @@ class Game2048 {
         this.bestEl = document.getElementById("game2048-best");
         this.stateLabelEl = document.getElementById("game2048-state-label");
 
+        this.size = options.size || DEFAULT_BOARD_SIZE;  // 棋盘边长
+        this.tileSize = this.computeTileSize(this.size);
+
         this.score = 0;
-        this.best = loadBest2048();
+        this.best = loadBest2048(this.size);
         this.state = "playing"; // "playing" | "won" | "over"
         this.grid = this.emptyGrid();
         this.tiles = [];
@@ -39,15 +49,37 @@ class Game2048 {
         this.reset();
     }
 
+    // 根据 size 计算 tile 像素大小，让整体内框差不多保持不变
+    computeTileSize(size) {
+        const inner = REF_BOARD_INNER; // 固定目标尺寸
+        const totalGap = TILE_GAP * (size - 1);
+        return (inner - totalGap) / size;
+    }
+
+    // 对外暴露：修改棋盘大小，比如 game2048.setBoardSize(5)
+    setBoardSize(newSize) {
+        if (newSize < 3 || newSize > 6) return; // 限制范围，你可以改
+        this.size = newSize;
+        this.tileSize = this.computeTileSize(newSize);
+        this.best = loadBest2048(this.size);
+
+        // 更新背景格子 + 状态
+        this.buildBackground();
+        this.reset();
+    }
+
     emptyGrid() {
-        return Array.from({ length: BOARD_SIZE }, () =>
-            Array.from({ length: BOARD_SIZE }, () => null)
+        return Array.from({ length: this.size }, () =>
+            Array.from({ length: this.size }, () => null)
         );
     }
 
     buildBackground() {
         this.bgEl.innerHTML = "";
-        for (let i = 0; i < BOARD_SIZE * BOARD_SIZE; i++) {
+        // 更新 CSS 网格列数
+        this.bgEl.style.gridTemplateColumns = `repeat(${this.size}, 1fr)`;
+
+        for (let i = 0; i < this.size * this.size; i++) {
             const cell = document.createElement("div");
             cell.className = "cell-2048";
             this.bgEl.appendChild(cell);
@@ -108,8 +140,8 @@ class Game2048 {
 
     addRandomTile() {
         const empty = [];
-        for (let r = 0; r < BOARD_SIZE; r++) {
-            for (let c = 0; c < BOARD_SIZE; c++) {
+        for (let r = 0; r < this.size; r++) {
+            for (let c = 0; c < this.size; c++) {
                 if (!this.grid[r][c]) empty.push({ r, c });
             }
         }
@@ -134,7 +166,7 @@ class Game2048 {
     buildTraversals(vector) {
         const rows = [];
         const cols = [];
-        for (let i = 0; i < BOARD_SIZE; i++) {
+        for (let i = 0; i < this.size; i++) {
             rows.push(i);
             cols.push(i);
         }
@@ -158,15 +190,31 @@ class Game2048 {
     }
 
     withinBounds(r, c) {
-        return r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE;
+        return r >= 0 && r < this.size && c >= 0 && c < this.size;
+    }
+
+    pulseBoard(maxMerge) {
+        const el = this.rootEl;
+        // 去掉再加 class 以重新触发动画
+        el.classList.remove("board-pulse", "board-pulse-strong");
+        // 强制 reflow
+        void el.offsetWidth;
+
+        if (maxMerge >= 512) {
+            el.classList.add("board-pulse-strong");
+        } else {
+            el.classList.add("board-pulse");
+        }
     }
 
     move(vector) {
         if (this.state !== "playing") return;
 
         let moved = false;
+        let anyMerged = false;
+        let maxMergeValue = 0;
 
-        // 清除 merge 标记 / new 标记
+        // 清除 merge / new 标记
         this.tiles.forEach(t => {
             t.merged = false;
             t.new = false;
@@ -193,13 +241,14 @@ class Game2048 {
                     this.score += mergedValue;
                     if (this.score > this.best) {
                         this.best = this.score;
-                        saveBest2048(this.best);
+                        saveBest2048(this.size, this.best);
                     }
 
-                    // 标记 old tile 已经被合并（从 tiles list 删除）
                     this.tiles = this.tiles.filter(t => t !== tile);
 
                     moved = true;
+                    anyMerged = true;
+                    if (mergedValue > maxMergeValue) maxMergeValue = mergedValue;
 
                     if (mergedValue === 2048 && this.state === "playing") {
                         this.state = "won";
@@ -224,6 +273,10 @@ class Game2048 {
         this.render();
         this.checkGameOver();
         this.updateStateLabel();
+
+        if (anyMerged) {
+            this.pulseBoard(maxMergeValue);
+        }
     }
 
     checkGameOver() {
@@ -233,11 +286,10 @@ class Game2048 {
 
     canMove() {
         // 有空格就还能动
-        for (let r = 0; r < BOARD_SIZE; r++) {
-            for (let c = 0; c < BOARD_SIZE; c++) {
+        for (let r = 0; r < this.size; r++) {
+            for (let c = 0; c < this.size; c++) {
                 const tile = this.grid[r][c];
                 if (!tile) return true;
-                // 检查右和下是否能合并
                 const right = this.grid[r][c + 1];
                 const down = this.grid[r + 1]?.[c];
                 if (right && right.value === tile.value) return true;
@@ -248,7 +300,7 @@ class Game2048 {
     }
 
     render() {
-        // 删掉所有 DOM tiles，再重新渲染（数量少，性能没问题）
+        // 简单做法：清 DOM，再渲染（数量不大）
         this.tilesEl.innerHTML = "";
 
         for (const tile of this.tiles) {
@@ -263,9 +315,20 @@ class Game2048 {
             if (tile.new) el.classList.add("tile-new");
             if (tile.merged) el.classList.add("tile-merged");
 
+            // 高数值 tile 增加 glow
+            if (tile.value >= 128 && tile.value < 512) {
+                el.classList.add("tile-glow");
+            } else if (tile.value >= 512) {
+                el.classList.add("tile-glow-strong");
+            }
+
+            // 设置动态宽高
+            el.style.width = `${this.tileSize}px`;
+            el.style.height = `${this.tileSize}px`;
+
             // 计算像素坐标
-            const x = tile.col * (TILE_SIZE + TILE_GAP);
-            const y = tile.row * (TILE_SIZE + TILE_GAP);
+            const x = tile.col * (this.tileSize + TILE_GAP);
+            const y = tile.row * (this.tileSize + TILE_GAP);
             el.style.left = `${x}px`;
             el.style.top = `${y}px`;
 
@@ -288,5 +351,16 @@ function init2048Game() {
             game2048.reset();
         });
     }
-}
 
+    // （可选）如果你在 HTML 里做了棋盘大小控制，比如：
+    // <button data-size="4">4x4</button> 等，这里统一挂事件就行：
+    const sizeButtons = document.querySelectorAll("[data-board-size]");
+    sizeButtons.forEach(btn => {
+        btn.addEventListener("click", () => {
+            const s = parseInt(btn.dataset.boardSize, 10);
+            if (Number.isFinite(s)) {
+                game2048.setBoardSize(s);
+            }
+        });
+    });
+}

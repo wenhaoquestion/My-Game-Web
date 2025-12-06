@@ -1,4 +1,7 @@
-// ====== main.js：全局切换函数 + 初始化 ======
+// main.js 负责：
+// 1. 统一切换三个 screen（menu / snake / 2048）
+// 2. 首次进入某个游戏时调用 initSnakeGame / init2048Game
+// 3. 加一点过渡动画（配合 CSS 的 .screen /.screen.active）
 
 function showScreen(idToShow) {
     const screens = document.querySelectorAll(".screen");
@@ -11,35 +14,78 @@ function showScreen(idToShow) {
     });
 }
 
-// 这三个函数会被 HTML 的 onclick 直接调用
-function switchToMenu() {
-    console.log("[main.js] switchToMenu");
-    showScreen("menu-screen");
-}
-
-function switchToSnake() {
-    console.log("[main.js] switchToSnake");
-    showScreen("snake-screen");
-
-    // 首次进入再初始化 Snake，避免重复 new
-    if (typeof initSnakeGame === "function" && !window.__snakeGameInitialized) {
-        initSnakeGame();
-        window.__snakeGameInitialized = true;
-    }
-}
-
-function switchTo2048() {
-    console.log("[main.js] switchTo2048");
-    showScreen("game2048-screen");
-
-    if (typeof init2048Game === "function" && !window.__game2048Initialized) {
-        init2048Game();
-        window.__game2048Initialized = true;
-    }
-}
-
 document.addEventListener("DOMContentLoaded", () => {
     console.log("[main.js] DOM ready");
+
+    const playSnakeBtn = document.getElementById("play-snake-btn");
+    const backSnakeBtn = document.getElementById("back-to-menu-btn");
+
+    const play2048Btn = document.getElementById("play-2048-btn");
+    const back2048Btn = document.getElementById("back-to-menu-2048-btn");
+
+    // 按钮按下小压感效果
+    document.querySelectorAll(".game-card .btn").forEach((btn) => {
+        btn.addEventListener("mousedown", () => {
+            btn.classList.add("pressed");
+        });
+        btn.addEventListener("mouseup", () => {
+            btn.classList.remove("pressed");
+        });
+        btn.addEventListener("mouseleave", () => {
+            btn.classList.remove("pressed");
+        });
+    });
+
+    // ====== 进入 Snake ======
+    if (playSnakeBtn) {
+        playSnakeBtn.addEventListener("click", () => {
+            console.log("[main.js] Play Snake clicked");
+            showScreen("snake-screen");
+
+            if (!window.__snakeGameInitialized) {
+                if (typeof initSnakeGame === "function") {
+                    initSnakeGame();              // 在 snake.js 里定义
+                    window.__snakeGameInitialized = true;
+                } else {
+                    console.error("initSnakeGame is not defined. Check snake.js.");
+                }
+            }
+        });
+    }
+
+    // Snake 返回大厅
+    if (backSnakeBtn) {
+        backSnakeBtn.addEventListener("click", () => {
+            console.log("[main.js] Back from Snake");
+            showScreen("menu-screen");
+        });
+    }
+
+    // ====== 进入 2048 ======
+    if (play2048Btn) {
+        play2048Btn.addEventListener("click", () => {
+            console.log("[main.js] Play 2048 clicked");
+            showScreen("game2048-screen");
+
+            if (!window.__game2048Initialized) {
+                if (typeof init2048Game === "function") {
+                    init2048Game();              // 在 2048.js 里定义
+                    window.__game2048Initialized = true;
+                } else {
+                    console.error("init2048Game is not defined. Check 2048.js.");
+                }
+            }
+        });
+    }
+
+    // 2048 返回大厅
+    if (back2048Btn) {
+        back2048Btn.addEventListener("click", () => {
+            console.log("[main.js] Back from 2048");
+            showScreen("menu-screen");
+        });
+    }
+
     // 默认显示大厅
     showScreen("menu-screen");
 });

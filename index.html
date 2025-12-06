@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Wing's Web Arcade</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div class="app-shell">
+    <header class="app-header">
+        <h1>Wing's Web Arcade</h1>
+        <p>Mini games, smooth animations, all in your browser.</p>
+    </header>
+
+    <!-- ====== 游戏大厅：可以不断加卡片 ====== -->
+    <main id="menu-screen" class="screen active">
+        <section class="game-grid">
+            <!-- Snake 卡片 -->
+            <article class="game-card">
+                <div class="game-card-header">
+                    <h2>Neon Snake</h2>
+                    <span class="badge badge-live">LIVE</span>
+                </div>
+                <p class="game-desc">
+                    Classic snake with neon glow, levels, skins and power-ups.
+                </p>
+                <ul class="game-tags">
+                    <li>Arcade</li>
+                    <li>Grid</li>
+                    <li>Power-ups</li>
+                </ul>
+                <button id="play-snake-btn"
+                        class="btn primary"
+                        onclick="switchToSnake()">
+                    Play Snake
+                </button>
+            </article>
+
+            <!-- 2048 卡片 -->
+            <article class="game-card">
+                <div class="game-card-header">
+                    <h2>2048 Puzzle</h2>
+                    <span class="badge">New</span>
+                </div>
+                <p class="game-desc">
+                    Slide and merge tiles to reach 2048 with smooth animations.
+                </p>
+                <ul class="game-tags">
+                    <li>Puzzle</li>
+                    <li>Grid</li>
+                </ul>
+                <button id="play-2048-btn"
+                        class="btn primary"
+                        onclick="switchTo2048()">
+                    Play 2048
+                </button>
+            </article>
+        </section>
+    </main>
+
+    <!-- ====== Snake 游戏画面 ====== -->
+    <main id="snake-screen" class="screen">
+        <div class="snake-layout">
+            <div class="snake-top-bar">
+                <button id="back-to-menu-btn"
+                        class="btn ghost"
+                        onclick="switchToMenu()">
+                    &larr; Back
+                </button>
+                <div class="snake-title">
+                    <h2>Neon Snake</h2>
+                    <span class="subtitle">WASD / Arrow keys · ESC to pause</span>
+                </div>
+                <div class="skin-indicator">
+                    <span id="skin-label">Skin: Green</span>
+                </div>
+            </div>
+
+            <div class="snake-main">
+                <canvas id="snake-canvas"></canvas>
+
+                <aside class="snake-sidebar">
+                    <div class="info-card">
+                        <h3>Mode</h3>
+                        <p id="mode-label">Classic</p>
+                        <button id="toggle-mode-btn" class="btn small">Toggle Mode</button>
+                    </div>
+
+                    <div class="info-card">
+                        <h3>Speed</h3>
+                        <p id="speed-label">2</p>
+                        <button id="toggle-speed-btn" class="btn small">Toggle Speed</button>
+                    </div>
+
+                    <div class="info-card">
+                        <h3>Level</h3>
+                        <p id="level-label">Free Practice</p>
+                        <button id="toggle-level-btn" class="btn small">Toggle Level</button>
+                    </div>
+
+                    <div class="info-card">
+                        <h3>Score</h3>
+                        <p id="score-label">0</p>
+                        <p class="muted">Best: <span id="highscore-label">0</span></p>
+                    </div>
+
+                    <div class="info-card">
+                        <h3>Skin</h3>
+                        <p id="skin-name-label">Green</p>
+                        <button id="toggle-skin-btn" class="btn small">Toggle Skin</button>
+                    </div>
+
+                    <div class="info-card">
+                        <h3>Status</h3>
+                        <p id="status-label">Normal</p>
+                    </div>
+                </aside>
+            </div>
+        </div>
+    </main>
+
+    <!-- ====== 2048 游戏画面 ====== -->
+    <main id="game2048-screen" class="screen">
+        <div class="game2048-layout">
+            <div class="game2048-top-bar">
+                <button id="back-to-menu-2048-btn"
+                        class="btn ghost"
+                        onclick="switchToMenu()">
+                    &larr; Back
+                </button>
+                <div class="game2048-title">
+                    <h2>2048 Puzzle</h2>
+                    <span class="subtitle">Use arrow keys or WASD to move</span>
+                </div>
+                <div class="game2048-status">
+                    <span id="game2048-state-label">Playing</span>
+                </div>
+            </div>
+
+            <div class="game2048-main">
+                <div id="game2048-board" class="board-2048">
+                    <div class="board-2048-bg" id="board-2048-bg"></div>
+                    <div class="board-2048-tiles" id="board-2048-tiles"></div>
+                </div>
+
+                <aside class="game2048-sidebar">
+                    <div class="info-card">
+                        <h3>Score</h3>
+                        <p id="game2048-score">0</p>
+                    </div>
+
+                    <div class="info-card">
+                        <h3>Best</h3>
+                        <p id="game2048-best">0</p>
+                    </div>
+
+                    <div class="info-card">
+                        <h3>Controls</h3>
+                        <p class="muted">
+                            ↑ ↓ ← → or WASD<br/>
+                            Reach 2048 to win. Keep going for a higher score!
+                        </p>
+                    </div>
+
+                    <div class="info-card">
+                        <button id="game2048-newgame-btn" class="btn primary" style="width:100%;">
+                            New Game
+                        </button>
+                    </div>
+                </aside>
+            </div>
+        </div>
+    </main>
+
+
+    <footer class="app-footer">
+        <span>Built by Wing · Powered by HTML5 Canvas</span>
+    </footer>
+</div>
+
+<script src="snake.js"></script>
+<script src="2048.js"></script>
+<script src="main.js"></script>
+</body>
+</html>

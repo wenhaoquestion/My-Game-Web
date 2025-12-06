@@ -47,6 +47,9 @@ function switchToMenu() {
     showScreen("menu-screen");
 }
 
+window.switchToSnake = switchToSnake;
+window.switchTo2048 = switchTo2048;
+window.switchToMenu = switchToMenu;
 
 document.addEventListener("DOMContentLoaded", () => {
     console.log("[main.js] DOM ready");

@@ -957,10 +957,3 @@ function initSnakeGame() {
     });
 }
 
-function showScreen(idToShow) {
-    document.querySelectorAll(".screen").forEach(el => {
-        el.classList.remove("active");
-    });
-    const target = document.getElementById(idToShow);
-    if (target) target.classList.add("active");
-}

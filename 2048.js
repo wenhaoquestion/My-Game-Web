@@ -31,6 +31,7 @@ class Game2048 {
         this.scoreEl = document.getElementById("game2048-score");
         this.bestEl = document.getElementById("game2048-best");
         this.stateLabelEl = document.getElementById("game2048-state-label");
+        this.winDialogEl = document.getElementById("game2048-win-dialog");
 
         this.size = options.size || DEFAULT_BOARD_SIZE;  // 棋盘边长
         this.tileSize = this.computeTileSize(this.size);
@@ -38,6 +39,7 @@ class Game2048 {
         this.score = 0;
         this.best = loadBest2048(this.size);
         this.state = "playing"; // "playing" | "won" | "over"
+        this.endlessMode = false;
         this.grid = this.emptyGrid();
         this.tiles = [];
         this.nextTileId = 1;
@@ -118,6 +120,8 @@ class Game2048 {
         this.tiles = [];
         this.score = 0;
         this.state = "playing";
+        this.endlessMode = false;
+        this.hideWinDialog();
 
         this.addRandomTile();
         this.addRandomTile();
@@ -136,7 +140,36 @@ class Game2048 {
         if (this.state === "playing") this.stateLabelEl.textContent = "Playing";
         if (this.state === "won") this.stateLabelEl.textContent = "You reached 2048!";
         if (this.state === "over") this.stateLabelEl.textContent = "No more moves";
+
+        if (this.endlessMode && this.state === "playing") {
+            this.stateLabelEl.textContent = "Endless mode";
+        }
     }
+
+    showWinDialog() {
+        if (this.winDialogEl) {
+            this.winDialogEl.classList.add("visible");
+        }
+    }
+
+    hideWinDialog() {
+        if (this.winDialogEl) {
+            this.winDialogEl.classList.remove("visible");
+        }
+    }
+
+    continueEndless() {
+        this.endlessMode = true;
+        this.state = "playing";
+        this.hideWinDialog();
+        this.updateStateLabel();
+    }
+
+    acknowledgeWin() {
+        this.hideWinDialog();
+        this.updateStateLabel();
+    }
+
 
     addRandomTile() {
         const empty = [];
@@ -250,8 +283,9 @@ class Game2048 {
                     anyMerged = true;
                     if (mergedValue > maxMergeValue) maxMergeValue = mergedValue;
 
-                    if (mergedValue === 2048 && this.state === "playing") {
+                    if (mergedValue === 2048 && this.state === "playing" && !this.endlessMode) {
                         this.state = "won";
+                        this.showWinDialog();
                     }
                 } else {
                     // 移动到 farthest 位置
@@ -352,8 +386,20 @@ function init2048Game() {
         });
     }
 
-    // （可选）如果你在 HTML 里做了棋盘大小控制，比如：
-    // <button data-size="4">4x4</button> 等，这里统一挂事件就行：
+    const continueBtn = document.getElementById("game2048-continue-btn");
+    if (continueBtn) {
+        continueBtn.addEventListener("click", () => {
+            game2048.continueEndless();
+        });
+    }
+
+    const stayBtn = document.getElementById("game2048-stay-btn");
+    if (stayBtn) {
+        stayBtn.addEventListener("click", () => {
+            game2048.acknowledgeWin();
+        });
+    }
+
     const sizeButtons = document.querySelectorAll("[data-board-size]");
     sizeButtons.forEach(btn => {
         btn.addEventListener("click", () => {

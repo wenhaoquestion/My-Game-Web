@@ -140,6 +140,16 @@
                 <div id="game2048-board" class="board-2048">
                     <div class="board-2048-bg" id="board-2048-bg"></div>
                     <div class="board-2048-tiles" id="board-2048-tiles"></div>
+                    <div class="board-2048-overlay" id="game2048-win-dialog">
+                        <div class="overlay-card">
+                            <p class="overlay-title">已经达到 2048！</p>
+                            <p class="overlay-desc">是否要继续？选择继续将进入无尽模式。</p>
+                            <div class="overlay-actions">
+                                <button class="btn primary" id="game2048-continue-btn">继续挑战</button>
+                                <button class="btn ghost" id="game2048-stay-btn">结束本局</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <aside class="game2048-sidebar">

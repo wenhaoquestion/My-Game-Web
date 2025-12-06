@@ -409,6 +409,51 @@ body {
     overflow: hidden;
 }
 
+.board-2048-overlay {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: linear-gradient(180deg, rgba(10,10,30,0.92), rgba(0,0,0,0.92));
+    backdrop-filter: blur(2px);
+    z-index: 3;
+}
+
+.board-2048-overlay.visible {
+    display: flex;
+}
+
+.overlay-card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.16);
+    border-radius: 16px;
+    padding: 18px;
+    box-shadow: 0 14px 40px rgba(0,0,0,0.85);
+    max-width: 260px;
+    text-align: center;
+}
+
+.overlay-title {
+    margin: 0 0 6px;
+    font-weight: 700;
+    font-size: 1rem;
+    color: #fff;
+}
+
+.overlay-desc {
+    margin: 0 0 12px;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.overlay-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
 .board-2048-bg,
 .board-2048-tiles {
     position: absolute;

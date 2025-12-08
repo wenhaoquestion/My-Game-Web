@@ -46,6 +46,7 @@ class Game2048 {
 
         this.buildBackground();
         this.bindKeyboard();
+        this.bindTouch();
 
         this.updateScoreUI();
         this.reset();
@@ -91,8 +92,7 @@ class Game2048 {
     bindKeyboard() {
         window.addEventListener("keydown", (e) => {
             // 只有在 2048 screen 显示的时候响应
-            const screen = document.getElementById("game2048-screen");
-            if (!screen || !screen.classList.contains("active")) return;
+            if (!this.isActiveScreen()) return;
             if (this.state === "over") return;
 
             let handled = false;
@@ -113,6 +113,57 @@ class Game2048 {
                 e.preventDefault();
             }
         });
+    }
+
+    isActiveScreen() {
+        const screen = document.getElementById("game2048-screen");
+        return !!(screen && screen.classList.contains("active"));
+    }
+
+    bindTouch() {
+        let startX = 0;
+        let startY = 0;
+        let tracking = false;
+        const threshold = 24;
+
+        const onStart = (e) => {
+            if (!this.isActiveScreen()) return;
+            if (e.touches.length !== 1) return;
+            const t = e.touches[0];
+            startX = t.clientX;
+            startY = t.clientY;
+            tracking = true;
+        };
+
+        const onEnd = (e) => {
+            if (!tracking) return;
+            tracking = false;
+            if (!this.isActiveScreen()) return;
+            if (this.state === "over") return;
+            const t = e.changedTouches[0];
+            const dx = t.clientX - startX;
+            const dy = t.clientY - startY;
+            if (Math.max(Math.abs(dx), Math.abs(dy)) < threshold) return;
+
+            const absX = Math.abs(dx);
+            const absY = Math.abs(dy);
+            if (absX > absY) {
+                this.move({ x: dx > 0 ? 1 : -1, y: 0 });
+            } else {
+                this.move({ x: 0, y: dy > 0 ? 1 : -1 });
+            }
+            e.preventDefault();
+        };
+
+        const onMove = (e) => {
+            if (tracking && this.isActiveScreen()) {
+                e.preventDefault();
+            }
+        };
+
+        this.rootEl.addEventListener("touchstart", onStart, { passive: true });
+        this.rootEl.addEventListener("touchend", onEnd, { passive: false });
+        this.rootEl.addEventListener("touchmove", onMove, { passive: false });
     }
 
     reset() {

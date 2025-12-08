@@ -362,6 +362,7 @@ class SnakeGame {
 
         this.createLevels();
         this.addEventListeners();
+        this.addTouchControls();
         this.updateUI();
 
         this.state = "running";
@@ -578,8 +579,7 @@ class SnakeGame {
     addEventListeners() {
         window.addEventListener("keydown", (e) => {
             // 只有在 snake 屏幕是 active 时才响应
-            const screen = document.getElementById("snake-screen");
-            if (!screen || !screen.classList.contains("active")) return;
+            if (!this.isActiveScreen()) return;
             if (!this.snake) return;
             // 后面保持不变：
             if (e.key === "ArrowUp" || e.key === "w" || e.key === "W") {
@@ -597,6 +597,56 @@ class SnakeGame {
         });
     }
 
+    isActiveScreen() {
+        const screen = document.getElementById("snake-screen");
+        return !!(screen && screen.classList.contains("active"));
+    }
+
+    addTouchControls() {
+        let startX = 0;
+        let startY = 0;
+        let tracking = false;
+        const threshold = 18;
+
+        const startHandler = (e) => {
+            if (!this.isActiveScreen()) return;
+            if (e.touches.length !== 1) return;
+            const t = e.touches[0];
+            startX = t.clientX;
+            startY = t.clientY;
+            tracking = true;
+        };
+
+        const endHandler = (e) => {
+            if (!tracking) return;
+            tracking = false;
+            if (!this.isActiveScreen()) return;
+            if (!this.snake) return;
+            const t = e.changedTouches[0];
+            const dx = t.clientX - startX;
+            const dy = t.clientY - startY;
+            if (Math.max(Math.abs(dx), Math.abs(dy)) < threshold) return;
+
+            const absX = Math.abs(dx);
+            const absY = Math.abs(dy);
+            if (absX > absY) {
+                this.snake.changeDirection({ x: dx > 0 ? 1 : -1, y: 0 });
+            } else {
+                this.snake.changeDirection({ x: 0, y: dy > 0 ? 1 : -1 });
+            }
+            e.preventDefault();
+        };
+
+        const moveHandler = (e) => {
+            if (tracking && this.isActiveScreen()) {
+                e.preventDefault();
+            }
+        };
+
+        this.canvas.addEventListener("touchstart", startHandler, { passive: true });
+        this.canvas.addEventListener("touchend", endHandler, { passive: false });
+        this.canvas.addEventListener("touchmove", moveHandler, { passive: false });
+    }
 
     toggleMode() {
         if (this.mode === "Classic") {

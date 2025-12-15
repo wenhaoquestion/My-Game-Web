@@ -54,6 +54,26 @@
                     Play 2048
                 </button>
             </article>
+
+            <!-- Coin Toss 卡片 -->
+            <article class="game-card">
+                <div class="game-card-header">
+                    <h2>Lucky Coin Toss</h2>
+                </div>
+                <p class="game-desc">
+                    Flip a shiny coin, track streaks, and log your lucky history.
+                </p>
+                <ul class="game-tags">
+                    <li>Casual</li>
+                    <li>Chance</li>
+                    <li>Quick Play</li>
+                </ul>
+                <button id="play-coin-btn"
+                        class="btn primary"
+                        onclick="switchToCoin()">
+                    Flip a Coin
+                </button>
+            </article>
         </section>
     </main>
 
@@ -192,6 +212,58 @@
         </div>
     </main>
 
+    <!-- ====== Coin Toss 游戏画面 ====== -->
+    <main id="coin-screen" class="screen">
+        <div class="coin-layout">
+            <div class="coin-top-bar">
+                <button id="back-to-menu-coin-btn"
+                        class="btn ghost"
+                        onclick="switchToMenu()">
+                    &larr; Back
+                </button>
+                <div class="coin-title">
+                    <h2>Lucky Coin Toss</h2>
+                    <span class="subtitle">Tap or press Space to toss the glowing coin</span>
+                </div>
+                <div class="coin-status">
+                    <span id="coin-last-result">Waiting...</span>
+                </div>
+            </div>
+
+            <div class="coin-main">
+                <div class="coin-card">
+                    <div class="coin-display" id="coin-display">
+                        <div class="coin-face" id="coin-face">?</div>
+                    </div>
+                    <p class="coin-message" id="coin-message">Ready to try your luck?</p>
+                    <div class="coin-actions">
+                        <button id="flip-coin-btn" class="btn primary">Flip Coin</button>
+                        <button id="reset-coin-btn" class="btn ghost">Reset Stats</button>
+                    </div>
+                </div>
+
+                <aside class="coin-sidebar">
+                    <div class="info-card">
+                        <h3>Totals</h3>
+                        <p>Flips: <span id="coin-total">0</span></p>
+                        <p>Heads: <span id="coin-heads">0</span></p>
+                        <p>Tails: <span id="coin-tails">0</span></p>
+                    </div>
+
+                    <div class="info-card">
+                        <h3>Streak</h3>
+                        <p class="muted">Current: <span id="coin-streak">0</span></p>
+                        <p class="muted">Best: <span id="coin-best-streak">0</span></p>
+                    </div>
+
+                    <div class="info-card">
+                        <h3>History</h3>
+                        <ul class="coin-history" id="coin-history"></ul>
+                    </div>
+                </aside>
+            </div>
+        </div>
+    </main>
 
     <footer class="app-footer">
         <span>Built by Wenhao · Powered by HTML5 Canvas</span>
@@ -200,6 +272,7 @@
 
 <script src="snake.js"></script>
 <script src="2048.js"></script>
+<script src="coin.js"></script>
 <script src="main.js"></script>
 </body>
 </html>

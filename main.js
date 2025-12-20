@@ -56,6 +56,20 @@ function switchToCoin() {
     }
 }
 
+function switchToTetris() {
+    console.log("[main.js] Play Tetris clicked");
+    showScreen("tetris-screen");
+
+    if (!window.__tetrisGameInitialized) {
+        if (typeof initTetrisGame === "function") {
+            initTetrisGame();
+            window.__tetrisGameInitialized = true;
+        } else {
+            console.error("initTetrisGame is not defined. Check tetris.js.");
+        }
+    }
+}
+
 function switchToMenu() {
     console.log("[main.js] Back to menu");
     showScreen("menu-screen");
@@ -64,6 +78,7 @@ function switchToMenu() {
 window.switchToSnake = switchToSnake;
 window.switchTo2048 = switchTo2048;
 window.switchToCoin = switchToCoin;
+window.switchToTetris = switchToTetris;
 window.switchToMenu = switchToMenu;
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -77,6 +92,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const playCoinBtn = document.getElementById("play-coin-btn");
     const backCoinBtn = document.getElementById("back-to-menu-coin-btn");
+
+    const playTetrisBtn = document.getElementById("play-tetris-btn");
+    const backTetrisBtn = document.getElementById("back-to-menu-tetris-btn");
 
     // 按钮按下小压感效果
     document.querySelectorAll(".game-card .btn").forEach((btn) => {
@@ -119,6 +137,16 @@ document.addEventListener("DOMContentLoaded", () => {
     // Coin Toss 返回大厅
     if (backCoinBtn) {
         backCoinBtn.addEventListener("click", switchToMenu);
+    }
+
+    // ====== 进入 Tetris ======
+    if (playTetrisBtn) {
+        playTetrisBtn.addEventListener("click", switchToTetris);
+    }
+
+    // Tetris 返回大厅
+    if (backTetrisBtn) {
+        backTetrisBtn.addEventListener("click", switchToMenu);
     }
 
     // 默认显示大厅

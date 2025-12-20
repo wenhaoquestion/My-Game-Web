@@ -74,6 +74,25 @@
                     Flip a Coin
                 </button>
             </article>
+
+            <article class="game-card">
+                <div class="game-card-header">
+                    <h2>Prismatic Tetris</h2>
+                </div>
+                <p class="game-desc">
+                    High-energy Tetris with multiple modes and levels, featuring combo light effects and energy surges.
+                </p>
+                <ul class="game-tags">
+                    <li>Arcade</li>
+                    <li>Endless</li>
+                    <li>Challenge</li>
+                </ul>
+                <button id="play-tetris-btn"
+                        class="btn primary"
+                        onclick="switchToTetris()">
+                    Launch Tetris
+                </button>
+            </article>
         </section>
     </main>
 
@@ -265,6 +284,101 @@
         </div>
     </main>
 
+    <main id="tetris-screen" class="screen">
+        <div class="tetris-layout">
+            <div class="tetris-top-bar">
+                <button id="back-to-menu-tetris-btn"
+                        class="btn ghost"
+                        onclick="switchToMenu()">
+                    &larr; Back
+                </button>
+                <div class="tetris-title">
+                    <h2>Prismatic Tetris</h2>
+                    <span class="subtitle">方向键 / WASD 移动 · Q/E 旋转 · 空格硬降 · Shift 交换保留</span>
+                </div>
+                <div class="tetris-status">
+                    <span id="tetris-mode-label">Marathon</span>
+                    <span class="badge" id="tetris-stage-label">Stage 1</span>
+                </div>
+            </div>
+
+            <div class="tetris-main">
+                <div class="tetris-board-wrap">
+                    <canvas id="tetris-canvas" width="320" height="640"></canvas>
+                    <div class="tetris-overlay" id="tetris-overlay">
+                        <div class="overlay-card">
+                            <p class="overlay-title" id="tetris-overlay-title">Paused</p>
+                            <p class="overlay-desc" id="tetris-overlay-desc">Press Space to resume</p>
+                            <div class="overlay-actions">
+                                <button class="btn primary" id="tetris-overlay-primary">Resume</button>
+                                <button class="btn ghost" id="tetris-overlay-secondary">Restart</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <aside class="tetris-sidebar">
+                    <div class="info-card">
+                        <h3>Score & Lines</h3>
+                        <p>Score: <span id="tetris-score">0</span></p>
+                        <p>Lines: <span id="tetris-lines">0</span></p>
+                        <p>Level: <span id="tetris-level">1</span></p>
+                        <p class="muted">Goal: <span id="tetris-goal">-</span></p>
+                    </div>
+
+                    <div class="info-card">
+                        <h3>Mode & Stage</h3>
+                        <div class="tetris-mode-row">
+                            <label for="tetris-mode-select" class="muted">Mode</label>
+                            <select id="tetris-mode-select" class="tetris-select">
+                                <option value="marathon">Marathon · 150 Lines</option>
+                                <option value="sprint">Sprint · 40 Lines</option>
+                                <option value="ultra">Ultra · 120s</option>
+                                <option value="gauntlet">Gauntlet · Garbage Rush</option>
+                            </select>
+                        </div>
+                        <div class="tetris-mode-row">
+                            <label for="tetris-stage-select" class="muted">Stage</label>
+                            <select id="tetris-stage-select" class="tetris-select"></select>
+                        </div>
+                        <div class="tetris-actions">
+                            <button class="btn primary" id="tetris-start-btn">Start / Restart</button>
+                            <button class="btn ghost" id="tetris-pause-btn">Pause</button>
+                        </div>
+                        <p class="muted" id="tetris-message">Choose a mode to begin.</p>
+                    </div>
+
+                    <div class="info-card">
+                        <h3>Meter</h3>
+                        <p>Combo: <span id="tetris-combo">0</span></p>
+                        <p>Back-to-back: <span id="tetris-b2b">0</span></p>
+                        <p>Energy: <span id="tetris-energy">0%</span></p>
+                        <div class="tetris-energy-bar">
+                            <div class="tetris-energy-fill" id="tetris-energy-fill"></div>
+                        </div>
+                        <p class="muted">Timer: <span id="tetris-timer">0.0s</span></p>
+                    </div>
+
+                    <div class="info-card">
+                        <h3>Next</h3>
+                        <div class="tetris-mini" id="tetris-next"></div>
+                    </div>
+
+                    <div class="info-card">
+                        <h3>Hold</h3>
+                        <div class="tetris-mini" id="tetris-hold"></div>
+                        <p class="muted">Shift / C to swap once per piece</p>
+                    </div>
+
+                    <div class="info-card">
+                        <h3>Modifiers</h3>
+                        <ul class="tetris-tags" id="tetris-modifiers"></ul>
+                    </div>
+                </aside>
+            </div>
+        </div>
+    </main>
+
     <footer class="app-footer">
         <span>Built by Wenhao · Powered by HTML5 Canvas</span>
     </footer>
@@ -273,6 +387,7 @@
 <script src="snake.js"></script>
 <script src="2048.js"></script>
 <script src="coin.js"></script>
+<script src="tetris.js"></script>
 <script src="main.js"></script>
 </body>
 </html>

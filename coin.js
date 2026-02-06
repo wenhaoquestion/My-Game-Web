@@ -86,7 +86,7 @@ function initCoinGame() {
         coinFace.dataset.side = result.toLowerCase();
         coinFace.classList.add("spin");
 
-        coinMessage.textContent = result === "Heads" ? "Heads! Shine of luck." : "Tails! Try again.";
+        coinMessage.textContent = result === "Heads" ? "Heads!" : "Tails!";
         coinLastResult.textContent = `Last: ${result}`;
 
         state.history.push({ side: result, time: formatTime() });

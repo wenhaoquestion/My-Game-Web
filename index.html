@@ -6,11 +6,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="style.css" />
 </head>
-<body>
+<body data-theme="nebula" data-ambient="on" data-game="menu">
 <div class="app-shell">
     <header class="app-header">
-        <h1>Wenhao's Web Arcade</h1>
-        <p>Mini games.</p>
+        <div class="header-main">
+            <div class="header-title">
+                <h1>Wenhao's Web Arcade</h1>
+                <p>Mini games.</p>
+            </div>
+            <div class="header-actions">
+                <div class="theme-select">
+                    <span class="muted">Theme</span>
+                    <select id="theme-select" class="theme-dropdown">
+                        <option value="nebula">Nebula</option>
+                        <option value="solaris">Solaris</option>
+                        <option value="aqua">Aqua Rift</option>
+                        <option value="ember">Ember</option>
+                        <option value="verdant">Verdant</option>
+                    </select>
+                </div>
+                <button id="ambient-toggle-btn" class="btn small">Aura: On</button>
+            </div>
+        </div>
     </header>
 
     <!-- ====== 游戏大厅：可以不断加卡片 ====== -->
@@ -52,6 +69,26 @@
                         class="btn primary"
                         onclick="switchTo2048()">
                     Play 2048
+                </button>
+            </article>
+
+            <!-- Sudoku 卡片 -->
+            <article class="game-card">
+                <div class="game-card-header">
+                    <h2>Prism Sudoku</h2>
+                </div>
+                <p class="game-desc">
+                    Classic + Killer Sudoku with radiant cages, aura highlights, and multi-tier difficulties.
+                </p>
+                <ul class="game-tags">
+                    <li>Logic</li>
+                    <li>Grid</li>
+                    <li>Killer</li>
+                </ul>
+                <button id="play-sudoku-btn"
+                        class="btn primary"
+                        onclick="switchToSudoku()">
+                    Play Sudoku
                 </button>
             </article>
 
@@ -284,6 +321,133 @@
         </div>
     </main>
 
+    <!-- ====== Sudoku 游戏画面 ====== -->
+    <main id="sudoku-screen" class="screen">
+        <div class="sudoku-layout">
+            <div class="sudoku-top-bar">
+                <button id="back-to-menu-sudoku-btn"
+                        class="btn ghost"
+                        onclick="switchToMenu()">
+                    &larr; Back
+                </button>
+                <div class="sudoku-title">
+                    <h2>Prism Sudoku</h2>
+                    <span class="subtitle">1-9 输入 · Backspace 删除 · 方向键移动</span>
+                </div>
+                <div class="sudoku-status">
+                    <span id="sudoku-mode-label">Classic</span>
+                    <span class="badge" id="sudoku-difficulty-label">Easy</span>
+                </div>
+            </div>
+
+            <div class="sudoku-main">
+                <div class="sudoku-board-wrap">
+                    <div id="sudoku-board" class="sudoku-board"></div>
+                    <div class="sudoku-overlay" id="sudoku-overlay">
+                        <div class="overlay-card">
+                            <p class="overlay-title" id="sudoku-overlay-title">Puzzle Solved</p>
+                            <p class="overlay-desc" id="sudoku-overlay-desc">Need another challenge? Spin up a fresh grid.</p>
+                            <div class="overlay-actions">
+                                <button class="btn primary" id="sudoku-play-again-btn">New Puzzle</button>
+                                <button class="btn ghost" id="sudoku-continue-btn">Keep Playing</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <aside class="sudoku-sidebar">
+                    <div class="info-card">
+                        <h3>Session</h3>
+                        <p>Time: <span id="sudoku-timer">0:00</span></p>
+                        <p>Mistakes: <span id="sudoku-mistakes">0</span></p>
+                        <p>Hints: <span id="sudoku-hints">0</span></p>
+                        <p class="muted" id="sudoku-state">Ready</p>
+                    </div>
+
+                    <div class="info-card">
+                        <h3>Mode</h3>
+                        <div class="sudoku-control-row">
+                            <button class="btn small sudoku-mode-btn active" data-mode="classic">Classic</button>
+                            <button class="btn small sudoku-mode-btn" data-mode="killer">Killer</button>
+                        </div>
+                    </div>
+
+                    <div class="info-card">
+                        <h3>Difficulty</h3>
+                        <div class="sudoku-control-row">
+                            <button class="btn small sudoku-difficulty-btn active" data-difficulty="easy">Easy</button>
+                            <button class="btn small sudoku-difficulty-btn" data-difficulty="medium">Medium</button>
+                            <button class="btn small sudoku-difficulty-btn" data-difficulty="hard">Hard</button>
+                            <button class="btn small sudoku-difficulty-btn" data-difficulty="expert">Expert</button>
+                        </div>
+                    </div>
+
+                    <div class="info-card">
+                        <h3>Input Mode</h3>
+                        <div class="sudoku-control-row">
+                            <button id="sudoku-note-toggle" class="btn small">Notes: Off</button>
+                            <button id="sudoku-auto-toggle" class="btn small active">Auto-check: On</button>
+                        </div>
+                        <p class="muted">Press N to toggle notes.</p>
+                    </div>
+
+                    <div class="info-card">
+                        <h3>Actions</h3>
+                        <div class="sudoku-control-row">
+                            <button id="sudoku-newgame-btn" class="btn primary">New Puzzle</button>
+                            <button id="sudoku-hint-btn" class="btn ghost">Hint</button>
+                            <button id="sudoku-clear-btn" class="btn ghost">Clear Cell</button>
+                        </div>
+                    </div>
+
+                    <div class="info-card">
+                        <h3>Validation</h3>
+                        <div class="sudoku-control-row">
+                            <button class="btn small sudoku-limit-btn active" data-limit="0">Limit: Off</button>
+                            <button class="btn small sudoku-limit-btn" data-limit="3">Limit: 3</button>
+                            <button class="btn small sudoku-limit-btn" data-limit="5">Limit: 5</button>
+                        </div>
+                    </div>
+
+                    <div class="info-card">
+                        <h3>Number Pad</h3>
+                        <div class="sudoku-pad" id="sudoku-pad">
+                            <button class="btn small" data-value="1">1</button>
+                            <button class="btn small" data-value="2">2</button>
+                            <button class="btn small" data-value="3">3</button>
+                            <button class="btn small" data-value="4">4</button>
+                            <button class="btn small" data-value="5">5</button>
+                            <button class="btn small" data-value="6">6</button>
+                            <button class="btn small" data-value="7">7</button>
+                            <button class="btn small" data-value="8">8</button>
+                            <button class="btn small" data-value="9">9</button>
+                            <button class="btn small sudoku-erase" data-value="0">Erase</button>
+                        </div>
+                    </div>
+
+                    <div class="info-card">
+                        <h3>Achievements</h3>
+                        <p>Total Solves: <span id="sudoku-total-solves">0</span></p>
+                        <p>Perfect Solves: <span id="sudoku-perfect-solves">0</span></p>
+                        <p>Current Streak: <span id="sudoku-current-streak">0</span></p>
+                        <p>Best Streak: <span id="sudoku-best-streak">0</span></p>
+                        <p>Average Time: <span id="sudoku-average-time">--</span></p>
+                        <p>Best Time: <span id="sudoku-best-time">--</span></p>
+                        <p>Hardest Clear: <span id="sudoku-hardest-clear">--</span></p>
+                        <p class="muted" id="sudoku-best-detail">No record yet</p>
+                        <p class="muted" id="sudoku-hardest-detail"></p>
+                    </div>
+
+                    <div class="info-card">
+                        <h3>Killer Rules</h3>
+                        <p class="muted">Cages show sum targets. Digits in a cage cannot repeat.</p>
+                        <p class="muted">Auto-check can be toggled. Wrong entries glow red.</p>
+                    </div>
+                </aside>
+            </div>
+        </div>
+    </main>
+
     <main id="tetris-screen" class="screen">
         <div class="tetris-layout">
             <div class="tetris-top-bar">
@@ -387,6 +551,7 @@
 <script src="snake.js"></script>
 <script src="2048.js"></script>
 <script src="coin.js"></script>
+<script src="sudoku.js"></script>
 <script src="tetris.js"></script>
 <script src="main.js"></script>
 </body>

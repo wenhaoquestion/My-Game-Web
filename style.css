@@ -1,8 +1,23 @@
 :root {
     --bg: #050510;
     --bg-elevated: #0b0b20;
+    --bg-panel: rgba(8, 9, 22, 0.85);
     --accent: #5aaaff;
+    --accent-2: #ff6eb4;
+    --accent-3: #7ef9ff;
     --accent-soft: rgba(90, 170, 255, 0.2);
+    --accent-soft-2: rgba(255, 110, 180, 0.18);
+    --accent-glow: rgba(90, 170, 255, 0.85);
+    --accent-glow-soft: rgba(90, 170, 255, 0.3);
+    --accent-3-glow: rgba(126, 249, 255, 0.8);
+    --accent-3-soft: rgba(126, 249, 255, 0.2);
+    --panel-accent: var(--accent-soft);
+    --panel-accent-2: var(--accent-soft-2);
+    --panel-accent-3: var(--accent-3-soft);
+    --page-glow: #16163b;
+    --page-bg: #020212;
+    --header-grad-start: rgba(90,170,255,0.18);
+    --header-grad-end: rgba(255,110,180,0.15);
     --text: #f3f4ff;
     --text-muted: #a5a7c4;
     --card-radius: 18px;
@@ -14,6 +29,137 @@
     --snake-gradient-end: #050510;
 }
 
+body[data-theme="nebula"] {
+    --accent: #5aaaff;
+    --accent-2: #ff6eb4;
+    --accent-3: #7ef9ff;
+    --accent-soft: rgba(90, 170, 255, 0.2);
+    --accent-soft-2: rgba(255, 110, 180, 0.18);
+    --accent-glow: rgba(90, 170, 255, 0.85);
+    --accent-glow-soft: rgba(90, 170, 255, 0.3);
+    --accent-3-glow: rgba(126, 249, 255, 0.8);
+    --accent-3-soft: rgba(126, 249, 255, 0.2);
+    --page-glow: #16163b;
+    --page-bg: #020212;
+    --bg-elevated: #0b0b20;
+    --snake-gradient-start: #141433;
+    --snake-gradient-end: #050510;
+    --header-grad-start: rgba(90,170,255,0.18);
+    --header-grad-end: rgba(255,110,180,0.15);
+}
+
+body[data-theme="solaris"] {
+    --accent: #ff9f43;
+    --accent-2: #ff6b6b;
+    --accent-3: #ffd166;
+    --accent-soft: rgba(255, 159, 67, 0.22);
+    --accent-soft-2: rgba(255, 107, 107, 0.2);
+    --accent-glow: rgba(255, 159, 67, 0.85);
+    --accent-glow-soft: rgba(255, 159, 67, 0.3);
+    --accent-3-glow: rgba(255, 209, 102, 0.85);
+    --accent-3-soft: rgba(255, 209, 102, 0.25);
+    --page-glow: #3b1f1f;
+    --page-bg: #140609;
+    --bg-elevated: #1b0c10;
+    --snake-gradient-start: #2d1014;
+    --snake-gradient-end: #0c0508;
+    --header-grad-start: rgba(255,159,67,0.2);
+    --header-grad-end: rgba(255,107,107,0.18);
+}
+
+body[data-theme="aqua"] {
+    --accent: #4bdcff;
+    --accent-2: #6cffc7;
+    --accent-3: #7ef9ff;
+    --accent-soft: rgba(75, 220, 255, 0.2);
+    --accent-soft-2: rgba(108, 255, 199, 0.18);
+    --accent-glow: rgba(75, 220, 255, 0.85);
+    --accent-glow-soft: rgba(75, 220, 255, 0.3);
+    --accent-3-glow: rgba(126, 249, 255, 0.8);
+    --accent-3-soft: rgba(126, 249, 255, 0.2);
+    --page-glow: #0d2b30;
+    --page-bg: #031018;
+    --bg-elevated: #071722;
+    --snake-gradient-start: #0c1f2a;
+    --snake-gradient-end: #031018;
+    --header-grad-start: rgba(75,220,255,0.2);
+    --header-grad-end: rgba(108,255,199,0.18);
+}
+
+body[data-theme="ember"] {
+    --accent: #ff7b54;
+    --accent-2: #ff4d6d;
+    --accent-3: #ffd166;
+    --accent-soft: rgba(255, 123, 84, 0.22);
+    --accent-soft-2: rgba(255, 77, 109, 0.2);
+    --accent-glow: rgba(255, 123, 84, 0.85);
+    --accent-glow-soft: rgba(255, 123, 84, 0.3);
+    --accent-3-glow: rgba(255, 209, 102, 0.85);
+    --accent-3-soft: rgba(255, 209, 102, 0.25);
+    --page-glow: #3c1512;
+    --page-bg: #120607;
+    --bg-elevated: #1b0a0c;
+    --snake-gradient-start: #2b0f12;
+    --snake-gradient-end: #100508;
+    --header-grad-start: rgba(255,123,84,0.2);
+    --header-grad-end: rgba(255,77,109,0.18);
+}
+
+body[data-theme="verdant"] {
+    --accent: #47e08b;
+    --accent-2: #2fd9a5;
+    --accent-3: #9ef0c6;
+    --accent-soft: rgba(71, 224, 139, 0.2);
+    --accent-soft-2: rgba(47, 217, 165, 0.18);
+    --accent-glow: rgba(71, 224, 139, 0.85);
+    --accent-glow-soft: rgba(71, 224, 139, 0.3);
+    --accent-3-glow: rgba(158, 240, 198, 0.8);
+    --accent-3-soft: rgba(158, 240, 198, 0.2);
+    --page-glow: #0f2c1e;
+    --page-bg: #03110a;
+    --bg-elevated: #071a12;
+    --snake-gradient-start: #0f2418;
+    --snake-gradient-end: #03110a;
+    --header-grad-start: rgba(71,224,139,0.2);
+    --header-grad-end: rgba(47,217,165,0.18);
+}
+
+body[data-game="menu"] {
+    --panel-accent: var(--accent-soft);
+    --panel-accent-2: var(--accent-soft-2);
+    --panel-accent-3: var(--accent-3-soft);
+}
+
+body[data-game="snake"] {
+    --panel-accent: var(--accent-soft);
+    --panel-accent-2: var(--accent-soft-2);
+    --panel-accent-3: var(--accent-3-soft);
+}
+
+body[data-game="2048"] {
+    --panel-accent: var(--accent-3-soft);
+    --panel-accent-2: var(--accent-soft);
+    --panel-accent-3: var(--accent-soft-2);
+}
+
+body[data-game="coin"] {
+    --panel-accent: var(--accent-soft-2);
+    --panel-accent-2: var(--accent-soft);
+    --panel-accent-3: var(--accent-3-soft);
+}
+
+body[data-game="tetris"] {
+    --panel-accent: var(--accent-soft);
+    --panel-accent-2: var(--accent-soft-2);
+    --panel-accent-3: var(--accent-3-soft);
+}
+
+body[data-game="sudoku"] {
+    --panel-accent: var(--accent-soft);
+    --panel-accent-2: var(--accent-3-soft);
+    --panel-accent-3: var(--accent-soft-2);
+}
+
 *,
 *::before,
 *::after {
@@ -23,7 +169,7 @@
 html, body {
     margin: 0;
     padding: 0;
-    background: radial-gradient(circle at top, #16163b, #020212 60%);
+    background: radial-gradient(circle at top, var(--page-glow), var(--page-bg) 60%);
     color: var(--text);
     font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
     "Segoe UI", sans-serif;
@@ -34,6 +180,45 @@ body {
     display: flex;
     align-items: stretch;
     justify-content: center;
+    position: relative;
+    isolation: isolate;
+}
+
+body::before,
+body::after {
+    content: "";
+    position: fixed;
+    inset: -20%;
+    z-index: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+}
+
+body::before {
+    background: radial-gradient(circle at 20% 20%, var(--accent-soft), transparent 55%),
+    radial-gradient(circle at 80% 10%, var(--accent-soft-2), transparent 45%),
+    radial-gradient(circle at 50% 80%, rgba(255,255,255,0.05), transparent 60%);
+    filter: blur(10px);
+    animation: ambientFloat 18s ease-in-out infinite;
+    opacity: 0.9;
+}
+
+body::after {
+    background: conic-gradient(from 120deg,
+    rgba(255,255,255,0.05),
+    var(--accent-soft),
+    rgba(255,255,255,0.02),
+    var(--accent-soft-2),
+    rgba(255,255,255,0.06));
+    filter: blur(40px);
+    mix-blend-mode: screen;
+    animation: ambientSpin 28s linear infinite;
+    opacity: 0.5;
+}
+
+body[data-ambient="off"]::before,
+body[data-ambient="off"]::after {
+    opacity: 0;
 }
 
 /* ====== App Shell ====== */
@@ -45,17 +230,90 @@ body {
     display: flex;
     flex-direction: column;
     gap: 16px;
+    position: relative;
+    z-index: 1;
+}
+
+.app-shell::before,
+.app-shell::after {
+    content: "";
+    position: absolute;
+    inset: -30%;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.app-shell::before {
+    background: radial-gradient(circle at 20% 20%, rgba(255,255,255,0.08), transparent 55%),
+    radial-gradient(circle at 80% 40%, rgba(255,255,255,0.04), transparent 60%);
+    opacity: 0.6;
+    filter: blur(30px);
+}
+
+.app-shell::after {
+    background: repeating-linear-gradient(
+            120deg,
+            rgba(255,255,255,0.02) 0px,
+            rgba(255,255,255,0.02) 1px,
+            transparent 1px,
+            transparent 10px
+    );
+    opacity: 0.4;
+    mix-blend-mode: screen;
+}
+
+.app-shell > * {
+    position: relative;
+    z-index: 1;
 }
 
 .app-header {
     padding: 16px 20px;
     border-radius: 18px;
-    background: linear-gradient(135deg, rgba(90,170,255,0.18), rgba(255,110,180,0.15));
+    background: linear-gradient(135deg, var(--header-grad-start), var(--header-grad-end));
     border: 1px solid rgba(255, 255, 255, 0.18);
     box-shadow: var(--shadow-soft);
     display: flex;
     flex-direction: column;
     gap: 4px;
+}
+
+.header-main {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.theme-select {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.theme-dropdown {
+    background: rgba(5, 7, 20, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: var(--text);
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-size: 0.85rem;
+    outline: none;
+    cursor: pointer;
+}
+
+.theme-dropdown:focus-visible {
+    box-shadow: 0 0 0 2px rgba(255,255,255,0.25);
 }
 
 .app-header h1 {
@@ -70,12 +328,23 @@ body {
     font-size: 0.9rem;
 }
 
+@media (max-width: 720px) {
+    .header-main {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+
 .app-footer {
     margin-top: auto;
     padding-top: 8px;
     font-size: 0.75rem;
     color: var(--text-muted);
     text-align: center;
+}
+
+.muted {
+    color: var(--text-muted);
 }
 
 /* ====== Screens ====== */
@@ -99,7 +368,7 @@ body {
 .game-card {
     padding: 18px 18px 16px;
     border-radius: var(--card-radius);
-    background: radial-gradient(circle at top left, rgba(90,170,255,0.18), var(--bg-elevated));
+    background: radial-gradient(circle at top left, var(--accent-soft), var(--bg-elevated));
     border: 1px solid var(--border-subtle);
     box-shadow: var(--shadow-soft);
     position: relative;
@@ -124,7 +393,7 @@ body {
 .game-card:hover {
     transform: translateY(-6px);
     box-shadow: 0 32px 90px rgba(0, 0, 0, 0.85);
-    border-color: rgba(90,170,255,0.6);
+    border-color: var(--accent-glow-soft);
 }
 
 .game-card:hover::before {
@@ -185,14 +454,14 @@ body {
 }
 
 .btn.primary {
-    background: linear-gradient(135deg, #5aaaff, #ff6eb4);
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
     border-color: transparent;
-    box-shadow: 0 10px 30px rgba(90,170,255,0.5);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
 }
 
 .btn.primary:hover {
     transform: translateY(-1px);
-    box-shadow: 0 16px 40px rgba(90,170,255,0.8);
+    box-shadow: 0 16px 40px rgba(0,0,0,0.55);
 }
 
 .btn.ghost {
@@ -236,7 +505,7 @@ body {
     margin-top: 8px;
     padding: 16px;
     border-radius: 20px;
-    background: radial-gradient(circle at top, rgba(90,170,255,0.06), rgba(0,0,0,0.9));
+    background: radial-gradient(circle at top, var(--panel-accent), rgba(0,0,0,0.9));
     border: 1px solid var(--border-subtle);
     box-shadow: var(--shadow-soft);
     display: flex;
@@ -280,7 +549,7 @@ body {
     width: 100%;
     max-width: 720px;
     border-radius: 18px;
-    border: 1px solid rgba(90,170,255,0.4);
+    border: 1px solid var(--accent-glow-soft);
     background: radial-gradient(circle at top, var(--snake-gradient-start), var(--snake-gradient-end));
     box-shadow: 0 18px 60px rgba(0, 0, 0, 0.9);
     display: block;
@@ -304,7 +573,7 @@ body {
 .info-card {
     padding: 10px 12px;
     border-radius: 14px;
-    background: rgba(5, 5, 20, 0.9);
+    background: var(--bg-panel);
     border: 1px solid rgba(255, 255, 255, 0.06);
     box-shadow: 0 14px 40px rgba(0, 0, 0, 0.75);
 }
@@ -350,7 +619,7 @@ body {
     margin-top: 8px;
     padding: 16px;
     border-radius: 20px;
-    background: radial-gradient(circle at top, rgba(255,255,255,0.06), rgba(0,0,0,0.9));
+    background: radial-gradient(circle at top, var(--panel-accent), rgba(0,0,0,0.9));
     border: 1px solid var(--border-subtle);
     box-shadow: var(--shadow-soft);
     display: flex;
@@ -578,7 +847,7 @@ body {
     margin-top: 8px;
     padding: 16px;
     border-radius: 20px;
-    background: radial-gradient(circle at top, rgba(255,255,255,0.06), rgba(0,0,0,0.9));
+    background: radial-gradient(circle at top, var(--panel-accent), rgba(0,0,0,0.9));
     border: 1px solid var(--border-subtle);
     box-shadow: var(--shadow-soft);
     display: flex;
@@ -639,10 +908,10 @@ body {
     height: 220px;
     border-radius: 50%;
     border: 2px solid rgba(255,255,255,0.12);
-    background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.1), rgba(90,170,255,0.06));
+    background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.1), var(--panel-accent));
     display: grid;
     place-items: center;
-    box-shadow: 0 24px 80px rgba(0,0,0,0.8), inset 0 0 30px rgba(90,170,255,0.2);
+    box-shadow: 0 24px 80px rgba(0,0,0,0.8), inset 0 0 30px var(--panel-accent);
     position: relative;
     overflow: hidden;
     perspective: 1200px;
@@ -763,7 +1032,7 @@ body {
 }
 
 .coin-history .side-tails {
-    color: #5aaaff;
+    color: var(--accent);
     font-weight: 700;
 }
 
@@ -772,7 +1041,7 @@ body {
     margin-top: 8px;
     padding: 16px;
     border-radius: 20px;
-    background: radial-gradient(circle at top, rgba(90,170,255,0.06), rgba(0,0,0,0.9));
+    background: radial-gradient(circle at top, var(--panel-accent), rgba(0,0,0,0.9));
     border: 1px solid var(--border-subtle);
     box-shadow: var(--shadow-soft);
     display: flex;
@@ -832,7 +1101,7 @@ body {
     display: block;
     width: 100%;
     height: auto;
-    background: radial-gradient(circle at 50% 15%, rgba(90,170,255,0.12), rgba(5,5,20,0.96));
+    background: radial-gradient(circle at 50% 15%, var(--panel-accent), rgba(5,5,20,0.96));
 }
 
 .tetris-overlay {
@@ -919,8 +1188,8 @@ body {
 .tetris-energy-fill {
     width: 0%;
     height: 100%;
-    background: linear-gradient(90deg, #5aaaff, #9b5bff, #ff6eb4);
-    box-shadow: 0 0 14px rgba(90,170,255,0.6);
+    background: linear-gradient(90deg, var(--accent), var(--accent-3), var(--accent-2));
+    box-shadow: 0 0 14px rgba(255,255,255,0.25);
     transition: width 0.2s ease-out;
 }
 
@@ -936,6 +1205,353 @@ body {
     0% { transform: translateY(0); box-shadow: 0 18px 60px rgba(0,0,0,0.9); }
     40% { transform: translateY(-4px); box-shadow: 0 24px 80px rgba(255,255,255,0.16); }
     100% { transform: translateY(0); box-shadow: 0 18px 60px rgba(0,0,0,0.9); }
+}
+
+/* ====== Sudoku 布局 ====== */
+
+.sudoku-layout {
+    margin-top: 8px;
+    padding: 16px;
+    border-radius: 20px;
+    background: radial-gradient(circle at top, var(--panel-accent), rgba(0,0,0,0.92));
+    border: 1px solid var(--border-subtle);
+    box-shadow: var(--shadow-soft);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    position: relative;
+    overflow: hidden;
+}
+
+.sudoku-layout::before {
+    content: "";
+    position: absolute;
+    inset: -40%;
+    background: conic-gradient(from 90deg,
+    var(--panel-accent),
+    var(--panel-accent-2),
+    var(--panel-accent-3),
+    var(--panel-accent));
+    opacity: 0.45;
+    filter: blur(40px);
+    animation: sudokuAura 18s linear infinite;
+    pointer-events: none;
+}
+
+.sudoku-layout > * {
+    position: relative;
+    z-index: 1;
+}
+
+.sudoku-top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.sudoku-title h2 {
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.sudoku-title .subtitle {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+}
+
+.sudoku-status {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.sudoku-main {
+    display: flex;
+    gap: 18px;
+    align-items: stretch;
+}
+
+.sudoku-board-wrap {
+    position: relative;
+}
+
+.sudoku-board {
+    --sudoku-cell: clamp(34px, 5.2vw, 56px);
+    display: grid;
+    grid-template-columns: repeat(9, var(--sudoku-cell));
+    grid-template-rows: repeat(9, var(--sudoku-cell));
+    gap: 0;
+    padding: 12px;
+    border-radius: 20px;
+    background: radial-gradient(circle at top, rgba(16,18,42,0.96), rgba(4,5,16,0.96));
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    box-shadow: 0 28px 80px rgba(0, 0, 0, 0.8);
+    position: relative;
+    overflow: hidden;
+}
+
+.sudoku-board::before {
+    content: "";
+    position: absolute;
+    inset: -60%;
+    background: conic-gradient(from 180deg,
+    var(--panel-accent),
+    var(--panel-accent-2),
+    var(--panel-accent-3),
+    var(--panel-accent));
+    opacity: 0.12;
+    animation: sudokuSpin 20s linear infinite;
+    pointer-events: none;
+}
+
+.sudoku-board.loading {
+    filter: saturate(0.6) brightness(0.85);
+}
+
+.sudoku-cell {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #dfe6ff;
+    background: var(--bg-panel);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transition: background var(--transition-fast), color var(--transition-fast),
+    box-shadow var(--transition-fast), transform var(--transition-fast);
+    z-index: 1;
+    cursor: pointer;
+}
+
+.sudoku-value {
+    position: relative;
+    z-index: 2;
+}
+
+.sudoku-notes {
+    position: absolute;
+    inset: 4px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    font-size: 0.5rem;
+    color: rgba(255,255,255,0.55);
+    text-shadow: 0 0 6px var(--panel-accent);
+    z-index: 1;
+    pointer-events: none;
+}
+
+.sudoku-notes span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transform: scale(0.9);
+    transition: opacity var(--transition-fast), transform var(--transition-fast);
+}
+
+.sudoku-notes span.active {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.sudoku-cell.has-value .sudoku-notes {
+    opacity: 0;
+}
+
+.sudoku-board.note-mode .sudoku-cell.selected {
+    background: var(--accent-3-soft);
+    box-shadow: inset 0 0 0 2px var(--accent-3-glow), 0 0 18px var(--accent-3-soft);
+}
+
+.sudoku-cell::after {
+    content: "";
+    position: absolute;
+    inset: 2px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0));
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+    pointer-events: none;
+}
+
+.sudoku-cell:hover::after {
+    opacity: 1;
+}
+
+.sudoku-cell.given {
+    color: #ffffff;
+    font-weight: 700;
+    text-shadow: 0 0 12px var(--accent-glow);
+}
+
+.sudoku-cell.hinted {
+    color: var(--accent-3);
+    text-shadow: 0 0 12px var(--accent-3-glow);
+}
+
+.sudoku-cell.selected {
+    background: var(--accent-glow-soft);
+    box-shadow: inset 0 0 0 2px var(--accent-glow), 0 0 18px var(--accent-glow-soft);
+}
+
+.sudoku-cell.peer {
+    background: var(--accent-soft);
+}
+
+.sudoku-cell.same-value {
+    color: #ffe47a;
+    text-shadow: 0 0 12px rgba(255,228,122,0.9);
+}
+
+.sudoku-cell.error {
+    color: #ff6b6b;
+    box-shadow: inset 0 0 0 2px rgba(255,107,107,0.85), 0 0 18px rgba(255,107,107,0.6);
+}
+
+.sudoku-cell.cage-peer {
+    background: var(--accent-3-soft);
+}
+
+.sudoku-cell.cage-error {
+    background: rgba(255,107,107,0.14);
+}
+
+.sudoku-cell.has-cage-sum::before {
+    content: attr(data-sum);
+    position: absolute;
+    top: 4px;
+    left: 6px;
+    font-size: 0.55rem;
+    color: rgba(255,255,255,0.65);
+    letter-spacing: 0.03em;
+    z-index: 3;
+    pointer-events: none;
+}
+
+.sudoku-cell.cage-error.has-cage-sum::before {
+    color: rgba(255,180,180,0.9);
+}
+
+.sudoku-cell.sudoku-block-right {
+    border-right: 2px solid rgba(255,255,255,0.35);
+}
+
+.sudoku-cell.sudoku-block-bottom {
+    border-bottom: 2px solid rgba(255,255,255,0.35);
+}
+
+.sudoku-cell.cage-top {
+    border-top: 2px solid rgba(255,255,255,0.5);
+}
+
+.sudoku-cell.cage-right {
+    border-right: 2px solid rgba(255,255,255,0.5);
+}
+
+.sudoku-cell.cage-bottom {
+    border-bottom: 2px solid rgba(255,255,255,0.5);
+}
+
+.sudoku-cell.cage-left {
+    border-left: 2px solid rgba(255,255,255,0.5);
+}
+
+.sudoku-cell.pop {
+    animation: sudokuPop 0.22s ease;
+}
+
+.sudoku-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(5,5,16,0.7);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition-med);
+}
+
+.sudoku-overlay.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.sudoku-sidebar {
+    width: 280px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.sudoku-control-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.sudoku-control-row .btn.active {
+    background: linear-gradient(135deg, var(--accent), var(--accent-3));
+    border-color: transparent;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+}
+
+.sudoku-pad {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.sudoku-pad .btn {
+    justify-content: center;
+}
+
+.sudoku-pad .sudoku-erase {
+    background: rgba(255,255,255,0.08);
+    border-color: rgba(255,255,255,0.25);
+}
+
+@media (max-width: 980px) {
+    .sudoku-main {
+        flex-direction: column;
+    }
+
+    .sudoku-sidebar {
+        width: 100%;
+    }
+}
+
+@keyframes sudokuAura {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes sudokuSpin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes sudokuPop {
+    0% { transform: scale(0.92); }
+    70% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+@keyframes ambientFloat {
+    0% { transform: translate3d(0, 0, 0) scale(1); }
+    50% { transform: translate3d(2%, -3%, 0) scale(1.04); }
+    100% { transform: translate3d(0, 0, 0) scale(1); }
+}
+
+@keyframes ambientSpin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
 /* ====== Screen 过渡动画 ====== */

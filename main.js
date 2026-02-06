@@ -12,6 +12,31 @@ function showScreen(idToShow) {
             el.classList.remove("active");
         }
     });
+
+    const gameMap = {
+        "menu-screen": "menu",
+        "snake-screen": "snake",
+        "game2048-screen": "2048",
+        "coin-screen": "coin",
+        "tetris-screen": "tetris",
+        "sudoku-screen": "sudoku",
+    };
+    document.body.dataset.game = gameMap[idToShow] || "menu";
+}
+
+const THEME_KEY = "arcade_theme";
+const AMBIENT_KEY = "arcade_ambient";
+
+function applyTheme(theme) {
+    const themeName = theme || "nebula";
+    document.body.dataset.theme = themeName;
+    localStorage.setItem(THEME_KEY, themeName);
+}
+
+function applyAmbient(isOn) {
+    const state = isOn ? "on" : "off";
+    document.body.dataset.ambient = state;
+    localStorage.setItem(AMBIENT_KEY, state);
 }
 
 function switchToSnake() {
@@ -70,6 +95,20 @@ function switchToTetris() {
     }
 }
 
+function switchToSudoku() {
+    console.log("[main.js] Play Sudoku clicked");
+    showScreen("sudoku-screen");
+
+    if (!window.__sudokuGameInitialized) {
+        if (typeof initSudokuGame === "function") {
+            initSudokuGame();
+            window.__sudokuGameInitialized = true;
+        } else {
+            console.error("initSudokuGame is not defined. Check sudoku.js.");
+        }
+    }
+}
+
 function switchToMenu() {
     console.log("[main.js] Back to menu");
     showScreen("menu-screen");
@@ -79,10 +118,14 @@ window.switchToSnake = switchToSnake;
 window.switchTo2048 = switchTo2048;
 window.switchToCoin = switchToCoin;
 window.switchToTetris = switchToTetris;
+window.switchToSudoku = switchToSudoku;
 window.switchToMenu = switchToMenu;
 
 document.addEventListener("DOMContentLoaded", () => {
     console.log("[main.js] DOM ready");
+
+    const themeSelect = document.getElementById("theme-select");
+    const ambientToggleBtn = document.getElementById("ambient-toggle-btn");
 
     const playSnakeBtn = document.getElementById("play-snake-btn");
     const backSnakeBtn = document.getElementById("back-to-menu-btn");
@@ -92,6 +135,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const playCoinBtn = document.getElementById("play-coin-btn");
     const backCoinBtn = document.getElementById("back-to-menu-coin-btn");
+
+    const playSudokuBtn = document.getElementById("play-sudoku-btn");
+    const backSudokuBtn = document.getElementById("back-to-menu-sudoku-btn");
 
     const playTetrisBtn = document.getElementById("play-tetris-btn");
     const backTetrisBtn = document.getElementById("back-to-menu-tetris-btn");
@@ -139,6 +185,16 @@ document.addEventListener("DOMContentLoaded", () => {
         backCoinBtn.addEventListener("click", switchToMenu);
     }
 
+    // ====== 进入 Sudoku ======
+    if (playSudokuBtn) {
+        playSudokuBtn.addEventListener("click", switchToSudoku);
+    }
+
+    // Sudoku 返回大厅
+    if (backSudokuBtn) {
+        backSudokuBtn.addEventListener("click", switchToMenu);
+    }
+
     // ====== 进入 Tetris ======
     if (playTetrisBtn) {
         playTetrisBtn.addEventListener("click", switchToTetris);
@@ -147,6 +203,29 @@ document.addEventListener("DOMContentLoaded", () => {
     // Tetris 返回大厅
     if (backTetrisBtn) {
         backTetrisBtn.addEventListener("click", switchToMenu);
+    }
+
+    const storedTheme = localStorage.getItem(THEME_KEY);
+    const themeOptions = ["nebula", "solaris", "aqua", "ember", "verdant"];
+    const initialTheme = themeOptions.includes(storedTheme) ? storedTheme : "nebula";
+    applyTheme(initialTheme);
+    if (themeSelect) {
+        themeSelect.value = initialTheme;
+        themeSelect.addEventListener("change", (e) => {
+            applyTheme(e.target.value);
+        });
+    }
+
+    const storedAmbient = localStorage.getItem(AMBIENT_KEY);
+    const ambientOn = storedAmbient !== "off";
+    applyAmbient(ambientOn);
+    if (ambientToggleBtn) {
+        ambientToggleBtn.textContent = `Aura: ${ambientOn ? "On" : "Off"}`;
+        ambientToggleBtn.addEventListener("click", () => {
+            const isOn = document.body.dataset.ambient !== "on";
+            applyAmbient(isOn);
+            ambientToggleBtn.textContent = `Aura: ${isOn ? "On" : "Off"}`;
+        });
     }
 
     // 默认显示大厅

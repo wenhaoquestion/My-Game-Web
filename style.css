@@ -46,6 +46,16 @@ body[data-theme="nebula"] {
     --snake-gradient-end: #050510;
     --header-grad-start: rgba(90,170,255,0.18);
     --header-grad-end: rgba(255,110,180,0.15);
+    --texture-layer-a: repeating-linear-gradient(
+            135deg,
+            rgba(255,255,255,0.05) 0px,
+            rgba(255,255,255,0.05) 1px,
+            transparent 1px,
+            transparent 14px
+    );
+    --texture-layer-b: radial-gradient(circle, rgba(126,249,255,0.12) 1px, transparent 1px);
+    --texture-size-a: 320px 320px;
+    --texture-size-b: 220px 220px;
 }
 
 body[data-theme="solaris"] {
@@ -65,6 +75,16 @@ body[data-theme="solaris"] {
     --snake-gradient-end: #0c0508;
     --header-grad-start: rgba(255,159,67,0.2);
     --header-grad-end: rgba(255,107,107,0.18);
+    --texture-layer-a: repeating-linear-gradient(
+            155deg,
+            rgba(255,209,102,0.12) 0px,
+            rgba(255,209,102,0.12) 2px,
+            transparent 2px,
+            transparent 16px
+    );
+    --texture-layer-b: radial-gradient(circle, rgba(255,159,67,0.15) 1px, transparent 1px);
+    --texture-size-a: 260px 260px;
+    --texture-size-b: 180px 180px;
 }
 
 body[data-theme="aqua"] {
@@ -84,6 +104,16 @@ body[data-theme="aqua"] {
     --snake-gradient-end: #031018;
     --header-grad-start: rgba(75,220,255,0.2);
     --header-grad-end: rgba(108,255,199,0.18);
+    --texture-layer-a: repeating-linear-gradient(
+            115deg,
+            rgba(126,249,255,0.12) 0px,
+            rgba(126,249,255,0.12) 1px,
+            transparent 1px,
+            transparent 18px
+    );
+    --texture-layer-b: radial-gradient(circle, rgba(108,255,199,0.18) 1px, transparent 1px);
+    --texture-size-a: 300px 300px;
+    --texture-size-b: 200px 200px;
 }
 
 body[data-theme="ember"] {
@@ -103,6 +133,16 @@ body[data-theme="ember"] {
     --snake-gradient-end: #100508;
     --header-grad-start: rgba(255,123,84,0.2);
     --header-grad-end: rgba(255,77,109,0.18);
+    --texture-layer-a: repeating-linear-gradient(
+            125deg,
+            rgba(255,141,108,0.14) 0px,
+            rgba(255,141,108,0.14) 2px,
+            transparent 2px,
+            transparent 14px
+    );
+    --texture-layer-b: radial-gradient(circle, rgba(255,209,102,0.18) 1px, transparent 1px);
+    --texture-size-a: 260px 260px;
+    --texture-size-b: 200px 200px;
 }
 
 body[data-theme="verdant"] {
@@ -122,12 +162,32 @@ body[data-theme="verdant"] {
     --snake-gradient-end: #03110a;
     --header-grad-start: rgba(71,224,139,0.2);
     --header-grad-end: rgba(47,217,165,0.18);
+    --texture-layer-a: repeating-linear-gradient(
+            140deg,
+            rgba(158,240,198,0.14) 0px,
+            rgba(158,240,198,0.14) 1px,
+            transparent 1px,
+            transparent 16px
+    );
+    --texture-layer-b: radial-gradient(circle, rgba(71,224,139,0.16) 1px, transparent 1px);
+    --texture-size-a: 300px 300px;
+    --texture-size-b: 210px 210px;
 }
 
 body[data-game="menu"] {
     --panel-accent: var(--accent-soft);
     --panel-accent-2: var(--accent-soft-2);
     --panel-accent-3: var(--accent-3-soft);
+    --texture-layer-a: repeating-linear-gradient(
+            120deg,
+            rgba(255,255,255,0.04) 0px,
+            rgba(255,255,255,0.04) 1px,
+            transparent 1px,
+            transparent 12px
+    );
+    --texture-layer-b: radial-gradient(circle, rgba(255,255,255,0.08) 1px, transparent 1px);
+    --texture-size-a: 280px 280px;
+    --texture-size-b: 180px 180px;
 }
 
 body[data-game="snake"] {
@@ -195,11 +255,15 @@ body::after {
 }
 
 body::before {
-    background: radial-gradient(circle at 20% 20%, var(--accent-soft), transparent 55%),
+    background:
+    var(--texture-layer-a),
+    var(--texture-layer-b),
+    radial-gradient(circle at 20% 20%, var(--accent-soft), transparent 55%),
     radial-gradient(circle at 80% 10%, var(--accent-soft-2), transparent 45%),
     radial-gradient(circle at 50% 80%, rgba(255,255,255,0.05), transparent 60%);
     filter: blur(10px);
-    animation: ambientFloat 18s ease-in-out infinite;
+    background-size: var(--texture-size-a), var(--texture-size-b), auto, auto, auto;
+    animation: ambientFloat 18s ease-in-out infinite, textureDrift 26s linear infinite;
     opacity: 0.9;
 }
 
@@ -1552,6 +1616,12 @@ body[data-ambient="off"]::after {
 @keyframes ambientSpin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+@keyframes textureDrift {
+    0% { background-position: 0 0, 0 0, 20% 20%, 80% 10%, 50% 80%; }
+    50% { background-position: 40px -60px, -30px 20px, 18% 22%, 82% 12%, 52% 78%; }
+    100% { background-position: 0 0, 0 0, 20% 20%, 80% 10%, 50% 80%; }
 }
 
 /* ====== Screen 过渡动画 ====== */

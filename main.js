@@ -39,6 +39,20 @@ function applyAmbient(isOn) {
     localStorage.setItem(AMBIENT_KEY, state);
 }
 
+function showSudokuLoadError() {
+    const overlay = document.getElementById("sudoku-overlay");
+    const titleEl = document.getElementById("sudoku-overlay-title");
+    const descEl = document.getElementById("sudoku-overlay-desc");
+    if (titleEl) titleEl.textContent = "Sudoku Failed to Load";
+    if (descEl) {
+        descEl.textContent =
+            "Sudoku script was not loaded. Check GitHub Pages source path and ensure sudoku.js is published.";
+    }
+    if (overlay) {
+        overlay.classList.add("visible");
+    }
+}
+
 function switchToSnake() {
     console.log("[main.js] Play Snake clicked");
     showScreen("snake-screen");
@@ -101,10 +115,17 @@ function switchToSudoku() {
 
     if (!window.__sudokuGameInitialized) {
         if (typeof initSudokuGame === "function") {
-            initSudokuGame();
+            try {
+                initSudokuGame();
+            } catch (err) {
+                console.error("[main.js] initSudokuGame failed", err);
+                showSudokuLoadError();
+                return;
+            }
             window.__sudokuGameInitialized = true;
         } else {
             console.error("initSudokuGame is not defined. Check sudoku.js.");
+            showSudokuLoadError();
         }
     }
 }

@@ -130,6 +130,25 @@
                     Launch Tetris
                 </button>
             </article>
+
+            <article class="game-card">
+                <div class="game-card-header">
+                    <h2>Texas Hold'em Odds</h2>
+                </div>
+                <p class="game-desc">
+                    德州扑克胜率计算器，快速估算胜率 / 平局 / 败率。
+                </p>
+                <ul class="game-tags">
+                    <li>Card</li>
+                    <li>Strategy</li>
+                    <li>Simulator</li>
+                </ul>
+                <button id="play-poker-btn"
+                        class="btn primary"
+                        onclick="switchToPoker()">
+                    Open Odds Lab
+                </button>
+            </article>
         </section>
     </main>
 
@@ -545,6 +564,193 @@
         </div>
     </main>
 
+    <main id="poker-screen" class="screen">
+        <div class="poker-layout">
+            <div class="poker-top-bar">
+                <button id="back-to-menu-poker-btn"
+                        class="btn ghost"
+                        onclick="switchToMenu()">
+                    &larr; Back
+                </button>
+                <div class="poker-title">
+                    <h2>Texas Hold'em Odds</h2>
+                    <span class="subtitle">选择手牌与公共牌，快速估算胜率</span>
+                </div>
+                <div class="poker-status">
+                    <span id="poker-status-label">Ready</span>
+                </div>
+            </div>
+
+            <div class="poker-main">
+                <section class="poker-table">
+                    <div class="poker-row">
+                        <div class="poker-row-label">Hero Hand</div>
+                        <div class="poker-slot-row">
+                            <div class="poker-slot-wrap">
+                                <span class="poker-slot-tag">Hand 1</span>
+                                <button type="button"
+                                        class="poker-card-slot"
+                                        data-slot-type="hero"
+                                        data-slot-index="0"
+                                        aria-label="Hero card 1"></button>
+                            </div>
+                            <div class="poker-slot-wrap">
+                                <span class="poker-slot-tag">Hand 2</span>
+                                <button type="button"
+                                        class="poker-card-slot"
+                                        data-slot-type="hero"
+                                        data-slot-index="1"
+                                        aria-label="Hero card 2"></button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="poker-row">
+                        <div class="poker-row-label">Board</div>
+                        <div class="poker-slot-row board">
+                            <div class="poker-slot-wrap">
+                                <span class="poker-slot-tag">Flop 1</span>
+                                <button type="button"
+                                        class="poker-card-slot small"
+                                        data-slot-type="board"
+                                        data-slot-index="0"
+                                        aria-label="Flop 1"></button>
+                            </div>
+                            <div class="poker-slot-wrap">
+                                <span class="poker-slot-tag">Flop 2</span>
+                                <button type="button"
+                                        class="poker-card-slot small"
+                                        data-slot-type="board"
+                                        data-slot-index="1"
+                                        aria-label="Flop 2"></button>
+                            </div>
+                            <div class="poker-slot-wrap">
+                                <span class="poker-slot-tag">Flop 3</span>
+                                <button type="button"
+                                        class="poker-card-slot small"
+                                        data-slot-type="board"
+                                        data-slot-index="2"
+                                        aria-label="Flop 3"></button>
+                            </div>
+                            <div class="poker-slot-wrap">
+                                <span class="poker-slot-tag">Turn</span>
+                                <button type="button"
+                                        class="poker-card-slot small"
+                                        data-slot-type="board"
+                                        data-slot-index="3"
+                                        aria-label="Turn"></button>
+                            </div>
+                            <div class="poker-slot-wrap">
+                                <span class="poker-slot-tag">River</span>
+                                <button type="button"
+                                        class="poker-card-slot small"
+                                        data-slot-type="board"
+                                        data-slot-index="4"
+                                        aria-label="River"></button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <p class="poker-hint" id="poker-selection-hint">Selected: Hand 1</p>
+
+                    <div class="poker-actions">
+                        <button id="poker-calc-btn" class="btn primary">Calculate</button>
+                        <button id="poker-clear-btn" class="btn ghost">Clear Selected</button>
+                        <button id="poker-reset-btn" class="btn ghost">Clear All</button>
+                    </div>
+
+                    <div class="poker-progress">
+                        <div class="poker-progress-fill" id="poker-progress-fill"></div>
+                    </div>
+
+                    <div class="poker-results">
+                        <div class="poker-equity">
+                            <div class="equity-ring" id="poker-equity-ring">
+                                <div class="equity-value" id="poker-equity-value">--%</div>
+                                <div class="equity-label">Equity</div>
+                            </div>
+                            <p class="equity-sub" id="poker-run-summary">No simulation yet</p>
+                        </div>
+                        <div class="poker-stats">
+                            <div class="poker-stat-card">
+                                <div class="stat-header">
+                                    <span class="stat-title">Win</span>
+                                    <span class="stat-value" id="poker-win">--%</span>
+                                </div>
+                                <div class="stat-bar">
+                                    <div class="stat-fill win" id="poker-win-bar"></div>
+                                </div>
+                            </div>
+                            <div class="poker-stat-card">
+                                <div class="stat-header">
+                                    <span class="stat-title">Tie</span>
+                                    <span class="stat-value" id="poker-tie">--%</span>
+                                </div>
+                                <div class="stat-bar">
+                                    <div class="stat-fill tie" id="poker-tie-bar"></div>
+                                </div>
+                            </div>
+                            <div class="poker-stat-card">
+                                <div class="stat-header">
+                                    <span class="stat-title">Lose</span>
+                                    <span class="stat-value" id="poker-lose">--%</span>
+                                </div>
+                                <div class="stat-bar">
+                                    <div class="stat-fill lose" id="poker-lose-bar"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <aside class="poker-sidebar">
+                    <div class="info-card">
+                        <h3>Setup</h3>
+                        <div class="poker-control">
+                            <label for="poker-opponents" class="muted">Opponents</label>
+                            <select id="poker-opponents" class="poker-select">
+                                <option value="1">1 Opponent</option>
+                                <option value="2">2 Opponents</option>
+                                <option value="3">3 Opponents</option>
+                                <option value="4">4 Opponents</option>
+                                <option value="5">5 Opponents</option>
+                                <option value="6">6 Opponents</option>
+                                <option value="7">7 Opponents</option>
+                                <option value="8">8 Opponents</option>
+                            </select>
+                        </div>
+                        <div class="poker-control">
+                            <label for="poker-iterations" class="muted">Iterations</label>
+                            <input id="poker-iterations"
+                                   type="range"
+                                   min="1000"
+                                   max="20000"
+                                   step="500"
+                                   value="6000" />
+                            <span id="poker-iterations-value" class="poker-iterations-value">6000</span>
+                        </div>
+                        <div class="poker-control poker-control-actions">
+                            <button id="poker-random-hero-btn" class="btn small">Random Hand</button>
+                            <button id="poker-random-board-btn" class="btn small">Random Board</button>
+                        </div>
+                    </div>
+
+                    <div class="info-card">
+                        <h3>Deck</h3>
+                        <p class="muted">先选中一个卡槽，再点牌面。</p>
+                        <div id="poker-deck" class="poker-deck"></div>
+                    </div>
+
+                    <div class="info-card">
+                        <h3>Notes</h3>
+                        <p class="muted">Monte Carlo 抽样估算，次数越高越稳定。</p>
+                        <p class="muted">平局会按人数平分计入 Equity。</p>
+                    </div>
+                </aside>
+            </div>
+        </div>
+    </main>
+
     <footer class="app-footer">
         <span>Built by Wenhao · Powered by HTML5 Canvas</span>
     </footer>
@@ -555,6 +761,7 @@
 <script src="coin.js"></script>
 <script src="sudoku.js"></script>
 <script src="tetris.js"></script>
+<script src="poker.js"></script>
 <script src="main.js"></script>
 </body>
 </html>

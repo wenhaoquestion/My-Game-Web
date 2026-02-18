@@ -20,6 +20,7 @@ function showScreen(idToShow) {
         "coin-screen": "coin",
         "tetris-screen": "tetris",
         "sudoku-screen": "sudoku",
+        "poker-screen": "poker",
     };
     document.body.dataset.game = gameMap[idToShow] || "menu";
 }
@@ -130,6 +131,20 @@ function switchToSudoku() {
     }
 }
 
+function switchToPoker() {
+    console.log("[main.js] Open Poker Odds clicked");
+    showScreen("poker-screen");
+
+    if (!window.__pokerGameInitialized) {
+        if (typeof initPokerGame === "function") {
+            initPokerGame();
+            window.__pokerGameInitialized = true;
+        } else {
+            console.error("initPokerGame is not defined. Check poker.js.");
+        }
+    }
+}
+
 function switchToMenu() {
     console.log("[main.js] Back to menu");
     showScreen("menu-screen");
@@ -140,6 +155,7 @@ window.switchTo2048 = switchTo2048;
 window.switchToCoin = switchToCoin;
 window.switchToTetris = switchToTetris;
 window.switchToSudoku = switchToSudoku;
+window.switchToPoker = switchToPoker;
 window.switchToMenu = switchToMenu;
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -162,6 +178,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const playTetrisBtn = document.getElementById("play-tetris-btn");
     const backTetrisBtn = document.getElementById("back-to-menu-tetris-btn");
+
+    const playPokerBtn = document.getElementById("play-poker-btn");
+    const backPokerBtn = document.getElementById("back-to-menu-poker-btn");
 
     // 按钮按下小压感效果
     document.querySelectorAll(".game-card .btn").forEach((btn) => {
@@ -224,6 +243,16 @@ document.addEventListener("DOMContentLoaded", () => {
     // Tetris 返回大厅
     if (backTetrisBtn) {
         backTetrisBtn.addEventListener("click", switchToMenu);
+    }
+
+    // ====== 进入 Poker Odds ======
+    if (playPokerBtn) {
+        playPokerBtn.addEventListener("click", switchToPoker);
+    }
+
+    // Poker 返回大厅
+    if (backPokerBtn) {
+        backPokerBtn.addEventListener("click", switchToMenu);
     }
 
     const storedTheme = localStorage.getItem(THEME_KEY);

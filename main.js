@@ -21,6 +21,10 @@ function showScreen(idToShow) {
         "tetris-screen": "tetris",
         "sudoku-screen": "sudoku",
         "poker-screen": "poker",
+        "shooter-screen": "shooter",
+        "gomoku-screen": "gomoku",
+        "xiangqi-screen": "xiangqi",
+        "chess-screen": "chess",
     };
     document.body.dataset.game = gameMap[idToShow] || "menu";
 }
@@ -145,6 +149,62 @@ function switchToPoker() {
     }
 }
 
+function switchToShooter() {
+    console.log("[main.js] Play Shooter clicked");
+    showScreen("shooter-screen");
+
+    if (!window.__shooterGameInitialized) {
+        if (typeof initShooterGame === "function") {
+            initShooterGame();
+            window.__shooterGameInitialized = true;
+        } else {
+            console.error("initShooterGame is not defined. Check shooter.js.");
+        }
+    }
+}
+
+function switchToGomoku() {
+    console.log("[main.js] Play Gomoku clicked");
+    showScreen("gomoku-screen");
+
+    if (!window.__gomokuGameInitialized) {
+        if (typeof initGomokuGame === "function") {
+            initGomokuGame();
+            window.__gomokuGameInitialized = true;
+        } else {
+            console.error("initGomokuGame is not defined. Check gomoku.js.");
+        }
+    }
+}
+
+function switchToXiangqi() {
+    console.log("[main.js] Play Xiangqi clicked");
+    showScreen("xiangqi-screen");
+
+    if (!window.__xiangqiGameInitialized) {
+        if (typeof initXiangqiGame === "function") {
+            initXiangqiGame();
+            window.__xiangqiGameInitialized = true;
+        } else {
+            console.error("initXiangqiGame is not defined. Check xiangqi.js.");
+        }
+    }
+}
+
+function switchToChess() {
+    console.log("[main.js] Play Chess clicked");
+    showScreen("chess-screen");
+
+    if (!window.__chessGameInitialized) {
+        if (typeof initChessGame === "function") {
+            initChessGame();
+            window.__chessGameInitialized = true;
+        } else {
+            console.error("initChessGame is not defined. Check chess.js.");
+        }
+    }
+}
+
 function switchToMenu() {
     console.log("[main.js] Back to menu");
     showScreen("menu-screen");
@@ -156,6 +216,10 @@ window.switchToCoin = switchToCoin;
 window.switchToTetris = switchToTetris;
 window.switchToSudoku = switchToSudoku;
 window.switchToPoker = switchToPoker;
+window.switchToShooter = switchToShooter;
+window.switchToGomoku = switchToGomoku;
+window.switchToXiangqi = switchToXiangqi;
+window.switchToChess = switchToChess;
 window.switchToMenu = switchToMenu;
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -181,6 +245,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const playPokerBtn = document.getElementById("play-poker-btn");
     const backPokerBtn = document.getElementById("back-to-menu-poker-btn");
+
+    const playShooterBtn = document.getElementById("play-shooter-btn");
+    const playXiangqiBtn = document.getElementById("play-xiangqi-btn");
+    const playChessBtn = document.getElementById("play-chess-btn");
 
     // 按钮按下小压感效果
     document.querySelectorAll(".game-card .btn").forEach((btn) => {
@@ -253,6 +321,21 @@ document.addEventListener("DOMContentLoaded", () => {
     // Poker 返回大厅
     if (backPokerBtn) {
         backPokerBtn.addEventListener("click", switchToMenu);
+    }
+
+    // ====== 进入 Shooter ======
+    if (playShooterBtn) {
+        playShooterBtn.addEventListener("click", switchToShooter);
+    }
+
+    // ====== 进入 Xiangqi ======
+    if (playXiangqiBtn) {
+        playXiangqiBtn.addEventListener("click", switchToXiangqi);
+    }
+
+    // ====== 进入 Chess ======
+    if (playChessBtn) {
+        playChessBtn.addEventListener("click", switchToChess);
     }
 
     const storedTheme = localStorage.getItem(THEME_KEY);

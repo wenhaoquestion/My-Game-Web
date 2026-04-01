@@ -202,7 +202,12 @@ class Snake {
                 ];
             } else {
                 const t = i / Math.max(1, this.body.length - 1);
-                color = lerpColor(snakeColor, [40, 80, 40], t);
+                const darkTail = [
+                    Math.floor(snakeColor[0] * 0.25),
+                    Math.floor(snakeColor[1] * 0.25),
+                    Math.floor(snakeColor[2] * 0.25),
+                ];
+                color = lerpColor(snakeColor, darkTail, t);
             }
 
             // subtle outline

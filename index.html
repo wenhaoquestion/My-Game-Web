@@ -7,238 +7,200 @@
     <link rel="stylesheet" href="style.css" />
 </head>
 <body data-theme="nebula" data-ambient="on" data-game="menu">
+
+<canvas id="ambient-canvas" aria-hidden="true"></canvas>
+
 <div class="app-shell">
     <header class="app-header">
-        <div class="header-main">
-            <div class="header-title">
-                <h1>Wenhao's Web Arcade</h1>
-                <p>Mini games.</p>
+        <div class="header-brand">
+            <div class="brand-icon">◈</div>
+            <div class="brand-text">
+                <h1>Wenhao's Arcade</h1>
+                <p class="brand-sub">10 games · Play now</p>
             </div>
-            <div class="header-actions">
-                <div class="theme-select">
-                    <span class="muted">Theme</span>
-                    <select id="theme-select" class="theme-dropdown">
-                        <option value="nebula">Nebula</option>
-                        <option value="solaris">Solaris</option>
-                        <option value="aqua">Aqua Rift</option>
-                        <option value="ember">Ember</option>
-                        <option value="verdant">Verdant</option>
-                    </select>
+        </div>
+        <div class="header-controls">
+            <div class="theme-picker">
+                <span class="ctrl-label">Theme</span>
+                <div class="theme-swatches">
+                    <button class="swatch active" data-theme="nebula" title="Nebula"></button>
+                    <button class="swatch" data-theme="solaris" title="Solaris"></button>
+                    <button class="swatch" data-theme="aqua" title="Aqua Rift"></button>
+                    <button class="swatch" data-theme="ember" title="Ember"></button>
+                    <button class="swatch" data-theme="verdant" title="Verdant"></button>
                 </div>
-                <button id="ambient-toggle-btn" class="btn small">Aura: On</button>
             </div>
+            <button id="ambient-toggle-btn" class="ctrl-btn">
+                <span class="ctrl-btn-icon">✦</span>
+                <span class="ctrl-btn-label">Aura On</span>
+            </button>
         </div>
     </header>
 
-    <!-- ====== 游戏大厅：可以不断加卡片 ====== -->
+    <!-- MENU -->
     <main id="menu-screen" class="screen active">
-        <section class="game-grid">
-            <!-- Snake 卡片 -->
-            <article class="game-card">
-                <div class="game-card-header">
-                    <h2>Neon Snake</h2>
-                </div>
-                <p class="game-desc">
-                    Classic snake with neon glow, levels, skins and power-ups.
-                </p>
-                <ul class="game-tags">
-                    <li>Arcade</li>
-                    <li>Grid</li>
-                    <li>Power-ups</li>
-                </ul>
-                <button id="play-snake-btn"
-                        class="btn primary"
-                        onclick="switchToSnake()">
-                    Play Snake
-                </button>
-            </article>
-
-            <!-- 2048 卡片 -->
-            <article class="game-card">
-                <div class="game-card-header">
-                    <h2>2048 Puzzle</h2>
-                </div>
-                <p class="game-desc">
-                    Slide and merge tiles to reach 2048 with smooth animations.
-                </p>
-                <ul class="game-tags">
-                    <li>Puzzle</li>
-                    <li>Grid</li>
-                </ul>
-                <button id="play-2048-btn"
-                        class="btn primary"
-                        onclick="switchTo2048()">
-                    Play 2048
-                </button>
-            </article>
-
-            <!-- Sudoku 卡片 -->
-            <article class="game-card">
-                <div class="game-card-header">
-                    <h2>Prism Sudoku</h2>
-                </div>
-                <p class="game-desc">
-                    Classic + Killer Sudoku with radiant cages, aura highlights, and multi-tier difficulties.
-                </p>
-                <ul class="game-tags">
-                    <li>Logic</li>
-                    <li>Grid</li>
-                    <li>Killer</li>
-                </ul>
-                <button id="play-sudoku-btn"
-                        class="btn primary"
-                        onclick="switchToSudoku()">
-                    Play Sudoku
-                </button>
-            </article>
-
-            <!-- Coin Toss 卡片 -->
-            <article class="game-card">
-                <div class="game-card-header">
-                    <h2>Lucky Coin Toss</h2>
-                </div>
-                <p class="game-desc">
-                    Flip a shiny coin, track streaks, and log your lucky history.
-                </p>
-                <ul class="game-tags">
-                    <li>Casual</li>
-                    <li>Chance</li>
-                    <li>Quick Play</li>
-                </ul>
-                <button id="play-coin-btn"
-                        class="btn primary"
-                        onclick="switchToCoin()">
-                    Flip a Coin
-                </button>
-            </article>
-
-            <article class="game-card">
-                <div class="game-card-header">
-                    <h2>Prismatic Tetris</h2>
-                </div>
-                <p class="game-desc">
-                    High-energy Tetris with multiple modes and levels, featuring combo light effects and energy surges.
-                </p>
-                <ul class="game-tags">
-                    <li>Arcade</li>
-                    <li>Endless</li>
-                    <li>Challenge</li>
-                </ul>
-                <button id="play-tetris-btn"
-                        class="btn primary"
-                        onclick="switchToTetris()">
-                    Launch Tetris
-                </button>
-            </article>
-
-            <article class="game-card">
-                <div class="game-card-header">
-                    <h2>Texas Hold'em Odds</h2>
-                </div>
-                <p class="game-desc">
-                    德州扑克胜率计算器，快速估算胜率 / 平局 / 败率。
-                </p>
-                <ul class="game-tags">
-                    <li>Card</li>
-                    <li>Strategy</li>
-                    <li>Simulator</li>
-                </ul>
-                <button id="play-poker-btn"
-                        class="btn primary"
-                        onclick="switchToPoker()">
-                    Open Odds Lab
-                </button>
-            </article>
+        <section class="menu-hero">
+            <p class="menu-hero-label">ARCADE COLLECTION</p>
+            <h2 class="menu-hero-title">Choose Your <span class="gradient-text">Game</span></h2>
         </section>
+
+        <div class="category-section">
+            <h3 class="category-label">⚡ Arcade</h3>
+            <div class="game-grid">
+                <article class="game-card" onclick="switchToSnake()">
+                    <div class="card-glow"></div>
+                    <div class="card-icon">🐍</div>
+                    <div class="card-body">
+                        <h2 class="card-title">Neon Snake</h2>
+                        <p class="card-desc">Classic snake with neon glow, skins, power-ups and obstacle levels.</p>
+                        <div class="card-tags"><span class="tag">Arcade</span><span class="tag">Power-ups</span></div>
+                    </div>
+                    <div class="card-play"><span class="play-arrow">▶</span></div>
+                </article>
+                <article class="game-card" onclick="switchToTetris()">
+                    <div class="card-glow"></div>
+                    <div class="card-icon">🟪</div>
+                    <div class="card-body">
+                        <h2 class="card-title">Prismatic Tetris</h2>
+                        <p class="card-desc">Multi-mode Tetris with combos, energy surges and neon light effects.</p>
+                        <div class="card-tags"><span class="tag">Arcade</span><span class="tag">Endless</span></div>
+                    </div>
+                    <div class="card-play"><span class="play-arrow">▶</span></div>
+                </article>
+                <article class="game-card" onclick="switchToShooter()">
+                    <div class="card-glow"></div>
+                    <div class="card-icon">🚀</div>
+                    <div class="card-body">
+                        <h2 class="card-title">Neon Shooter</h2>
+                        <p class="card-desc">Blast through 5 sectors, defeat bosses and survive endless waves.</p>
+                        <div class="card-tags"><span class="tag">Shooter</span><span class="tag">Levels</span><span class="tag">Endless</span></div>
+                    </div>
+                    <div class="card-play"><span class="play-arrow">▶</span></div>
+                </article>
+            </div>
+        </div>
+
+        <div class="category-section">
+            <h3 class="category-label">🧩 Puzzle</h3>
+            <div class="game-grid">
+                <article class="game-card" onclick="switchTo2048()">
+                    <div class="card-glow"></div>
+                    <div class="card-icon">🔢</div>
+                    <div class="card-body">
+                        <h2 class="card-title">2048 Puzzle</h2>
+                        <p class="card-desc">Slide and merge tiles to reach 2048 with smooth animations.</p>
+                        <div class="card-tags"><span class="tag">Puzzle</span><span class="tag">Grid</span></div>
+                    </div>
+                    <div class="card-play"><span class="play-arrow">▶</span></div>
+                </article>
+                <article class="game-card" onclick="switchToSudoku()">
+                    <div class="card-glow"></div>
+                    <div class="card-icon">⊞</div>
+                    <div class="card-body">
+                        <h2 class="card-title">Prism Sudoku</h2>
+                        <p class="card-desc">Classic + Killer Sudoku with radiant cages and multi-tier difficulties.</p>
+                        <div class="card-tags"><span class="tag">Logic</span><span class="tag">Killer</span></div>
+                    </div>
+                    <div class="card-play"><span class="play-arrow">▶</span></div>
+                </article>
+                <article class="game-card" onclick="switchToCoin()">
+                    <div class="card-glow"></div>
+                    <div class="card-icon">🪙</div>
+                    <div class="card-body">
+                        <h2 class="card-title">Lucky Coin Toss</h2>
+                        <p class="card-desc">Flip a glowing coin, track streaks and log your lucky history.</p>
+                        <div class="card-tags"><span class="tag">Casual</span><span class="tag">Quick Play</span></div>
+                    </div>
+                    <div class="card-play"><span class="play-arrow">▶</span></div>
+                </article>
+            </div>
+        </div>
+
+        <div class="category-section">
+            <h3 class="category-label">♟ Strategy &amp; Board</h3>
+            <div class="game-grid">
+                <article class="game-card" onclick="switchToGomoku()">
+                    <div class="card-glow"></div>
+                    <div class="card-icon">⚫</div>
+                    <div class="card-body">
+                        <h2 class="card-title">Five in a Row</h2>
+                        <p class="card-desc">Gomoku on a 15×15 board. Get 5 in a row to win. Play vs AI or a friend.</p>
+                        <div class="card-tags"><span class="tag">Strategy</span><span class="tag">AI</span><span class="tag">PvP</span></div>
+                    </div>
+                    <div class="card-play"><span class="play-arrow">▶</span></div>
+                </article>
+                <article class="game-card" onclick="switchToXiangqi()">
+                    <div class="card-glow"></div>
+                    <div class="card-icon">🀄</div>
+                    <div class="card-body">
+                        <h2 class="card-title">Chinese Chess</h2>
+                        <p class="card-desc">Full Xiangqi with all piece rules, flying general rule, and AI opponent.</p>
+                        <div class="card-tags"><span class="tag">Xiangqi</span><span class="tag">AI</span></div>
+                    </div>
+                    <div class="card-play"><span class="play-arrow">▶</span></div>
+                </article>
+                <article class="game-card" onclick="switchToChess()">
+                    <div class="card-glow"></div>
+                    <div class="card-icon">♔</div>
+                    <div class="card-body">
+                        <h2 class="card-title">Chess</h2>
+                        <p class="card-desc">Full chess: castling, en passant, pawn promotion, check and mate detection.</p>
+                        <div class="card-tags"><span class="tag">Chess</span><span class="tag">AI</span></div>
+                    </div>
+                    <div class="card-play"><span class="play-arrow">▶</span></div>
+                </article>
+                <article class="game-card" onclick="switchToPoker()">
+                    <div class="card-glow"></div>
+                    <div class="card-icon">🃏</div>
+                    <div class="card-body">
+                        <h2 class="card-title">Texas Hold'em Odds</h2>
+                        <p class="card-desc">Monte Carlo simulator — estimate win, tie and loss probability for any hand.</p>
+                        <div class="card-tags"><span class="tag">Card</span><span class="tag">Simulator</span></div>
+                    </div>
+                    <div class="card-play"><span class="play-arrow">▶</span></div>
+                </article>
+            </div>
+        </div>
     </main>
 
-    <!-- ====== Snake 游戏画面 ====== -->
+    <!-- SNAKE -->
     <main id="snake-screen" class="screen">
-        <div class="snake-layout">
-            <div class="snake-top-bar">
-                <button id="back-to-menu-btn"
-                        class="btn ghost"
-                        onclick="switchToMenu()">
-                    &larr; Back
-                </button>
-                <div class="snake-title">
-                    <h2>Neon Snake</h2>
-                    <span class="subtitle">WASD / Arrow keys · ESC to pause · Swipe to turn</span>
-                </div>
-                <div class="skin-indicator">
-                    <span id="skin-label">Skin: Green</span>
-                </div>
+        <div class="game-layout">
+            <div class="game-topbar">
+                <button class="back-btn" onclick="switchToMenu()">← Back</button>
+                <div class="game-topbar-title"><h2>Neon Snake</h2><span class="subtitle">WASD / Arrow keys · ESC to pause · Swipe to turn</span></div>
+                <span id="skin-label" class="topbar-badge">Skin: Green</span>
             </div>
-
-            <div class="snake-main">
+            <div class="game-main canvas-layout">
                 <canvas id="snake-canvas"></canvas>
-
-                <aside class="snake-sidebar">
-                    <div class="info-card">
-                        <h3>Mode</h3>
-                        <p id="mode-label">Classic</p>
-                        <button id="toggle-mode-btn" class="btn small">Toggle Mode</button>
-                    </div>
-
-                    <div class="info-card">
-                        <h3>Speed</h3>
-                        <p id="speed-label">2</p>
-                        <button id="toggle-speed-btn" class="btn small">Toggle Speed</button>
-                    </div>
-
-                    <div class="info-card">
-                        <h3>Level</h3>
-                        <p id="level-label">Free Practice</p>
-                        <button id="toggle-level-btn" class="btn small">Toggle Level</button>
-                    </div>
-
-                    <div class="info-card">
-                        <h3>Score</h3>
-                        <p id="score-label">0</p>
-                        <p class="muted">Best: <span id="highscore-label">0</span></p>
-                    </div>
-
-                    <div class="info-card">
-                        <h3>Skin</h3>
-                        <p id="skin-name-label">Green</p>
-                        <button id="toggle-skin-btn" class="btn small">Toggle Skin</button>
-                    </div>
-
-                    <div class="info-card">
-                        <h3>Status</h3>
-                        <p id="status-label">Normal</p>
-                    </div>
+                <aside class="game-sidebar">
+                    <div class="info-card"><span class="info-label">Mode</span><p id="mode-label">Classic</p><button id="toggle-mode-btn" class="btn sm">Toggle</button></div>
+                    <div class="info-card"><span class="info-label">Speed</span><p id="speed-label">2</p><button id="toggle-speed-btn" class="btn sm">Toggle</button></div>
+                    <div class="info-card"><span class="info-label">Level</span><p id="level-label">Free Practice</p><button id="toggle-level-btn" class="btn sm">Toggle</button></div>
+                    <div class="info-card score-card"><span class="info-label">Score</span><p id="score-label" class="big-num">0</p><p class="muted-sm">Best: <span id="highscore-label">0</span></p></div>
+                    <div class="info-card"><span class="info-label">Skin</span><p id="skin-name-label">Green</p><button id="toggle-skin-btn" class="btn sm">Toggle</button></div>
+                    <div class="info-card"><span class="info-label">Status</span><p id="status-label">Normal</p></div>
                 </aside>
             </div>
         </div>
     </main>
 
-    <!-- ====== 2048 游戏画面 ====== -->
+    <!-- 2048 -->
     <main id="game2048-screen" class="screen">
-        <div class="game2048-layout">
-            <div class="game2048-top-bar">
-                <button id="back-to-menu-2048-btn"
-                        class="btn ghost"
-                        onclick="switchToMenu()">
-                    &larr; Back
-                </button>
-                <div class="game2048-title">
-                    <h2>2048 Puzzle</h2>
-                    <span class="subtitle">Use arrow keys / WASD or swipe to move</span>
-                </div>
-                <div class="game2048-status">
-                    <span id="game2048-state-label">Playing</span>
-                </div>
+        <div class="game-layout">
+            <div class="game-topbar">
+                <button class="back-btn" onclick="switchToMenu()">← Back</button>
+                <div class="game-topbar-title"><h2>2048 Puzzle</h2><span class="subtitle">Arrow keys / WASD or swipe to move tiles</span></div>
+                <span id="game2048-state-label" class="topbar-badge">Playing</span>
             </div>
-
-            <div class="game2048-main">
+            <div class="game-main canvas-layout">
                 <div id="game2048-board" class="board-2048">
                     <div class="board-2048-bg" id="board-2048-bg"></div>
                     <div class="board-2048-tiles" id="board-2048-tiles"></div>
                     <div class="board-2048-overlay" id="game2048-win-dialog">
                         <div class="overlay-card">
                             <p class="overlay-title">Reached 2048!</p>
-                            <p class="overlay-desc">Want to continue? Choosing to continue will enter the endless mode.</p>
+                            <p class="overlay-desc">Continue for a higher score, or end here.</p>
                             <div class="overlay-actions">
                                 <button class="btn primary" id="game2048-continue-btn">Continue</button>
                                 <button class="btn ghost" id="game2048-stay-btn">End</button>
@@ -246,126 +208,58 @@
                         </div>
                     </div>
                 </div>
-
-                <aside class="game2048-sidebar">
-                    <div class="info-card">
-                        <h3>Score</h3>
-                        <p id="game2048-score">0</p>
-                    </div>
-
-                    <div class="info-card">
-                        <h3>Best</h3>
-                        <p id="game2048-best">0</p>
-                    </div>
-
-                    <div class="info-card">
-                        <h3>Controls</h3>
-                        <p class="muted">
-                            ↑ ↓ ← → or WASD<br/>
-                            Reach 2048 to win. Keep going for a higher score!
-                        </p>
-                    </div>
-
-                    <div class="info-card">
-                        <button id="game2048-newgame-btn" class="btn primary" style="width:100%;">
-                            New Game
-                        </button>
-                    </div>
-
-                    <div class="info-card">
-                        <h3>Board Size</h3>
-                        <div class="size-buttons">
-                            <button class="btn small" data-board-size="3">3×3</button>
-                            <button class="btn small" data-board-size="4">4×4</button>
-                            <button class="btn small" data-board-size="5">5×5</button>
-                            <button class="btn small" data-board-size="6">6×6</button>
-                        </div>
-                    </div>
-
+                <aside class="game-sidebar">
+                    <div class="info-card score-card"><span class="info-label">Score</span><p id="game2048-score" class="big-num">0</p></div>
+                    <div class="info-card score-card"><span class="info-label">Best</span><p id="game2048-best" class="big-num">0</p></div>
+                    <div class="info-card"><span class="info-label">Controls</span><p class="muted-sm">↑ ↓ ← → or WASD<br>Reach 2048 to win!</p></div>
+                    <div class="info-card"><button id="game2048-newgame-btn" class="btn primary full">New Game</button></div>
+                    <div class="info-card"><span class="info-label">Board Size</span><div class="btn-group"><button class="btn sm" data-board-size="3">3×3</button><button class="btn sm" data-board-size="4">4×4</button><button class="btn sm" data-board-size="5">5×5</button><button class="btn sm" data-board-size="6">6×6</button></div></div>
                 </aside>
             </div>
         </div>
     </main>
 
-    <!-- ====== Coin Toss 游戏画面 ====== -->
+    <!-- COIN -->
     <main id="coin-screen" class="screen">
-        <div class="coin-layout">
-            <div class="coin-top-bar">
-                <button id="back-to-menu-coin-btn"
-                        class="btn ghost"
-                        onclick="switchToMenu()">
-                    &larr; Back
-                </button>
-                <div class="coin-title">
-                    <h2>Lucky Coin Toss</h2>
-                    <span class="subtitle">Tap or press Space to toss the glowing coin</span>
-                </div>
-                <div class="coin-status">
-                    <span id="coin-last-result">Waiting...</span>
-                </div>
+        <div class="game-layout">
+            <div class="game-topbar">
+                <button class="back-btn" onclick="switchToMenu()">← Back</button>
+                <div class="game-topbar-title"><h2>Lucky Coin Toss</h2><span class="subtitle">Tap or press Space to flip the coin</span></div>
+                <span id="coin-last-result" class="topbar-badge">Waiting…</span>
             </div>
-
-            <div class="coin-main">
-                <div class="coin-card">
-                    <div class="coin-display" id="coin-display">
-                        <div class="coin-face" id="coin-face">?</div>
-                    </div>
+            <div class="game-main coin-layout-inner">
+                <div class="coin-stage">
+                    <div class="coin-display" id="coin-display"><div class="coin-face" id="coin-face">?</div></div>
                     <p class="coin-message" id="coin-message">Ready to try your luck?</p>
                     <div class="coin-actions">
                         <button id="flip-coin-btn" class="btn primary">Flip Coin</button>
-                        <button id="reset-coin-btn" class="btn ghost">Reset Stats</button>
+                        <button id="reset-coin-btn" class="btn ghost">Reset</button>
                     </div>
                 </div>
-
-                <aside class="coin-sidebar">
-                    <div class="info-card">
-                        <h3>Totals</h3>
-                        <p>Flips: <span id="coin-total">0</span></p>
-                        <p>Heads: <span id="coin-heads">0</span></p>
-                        <p>Tails: <span id="coin-tails">0</span></p>
-                    </div>
-
-                    <div class="info-card">
-                        <h3>Streak</h3>
-                        <p class="muted">Current: <span id="coin-streak">0</span></p>
-                        <p class="muted">Best: <span id="coin-best-streak">0</span></p>
-                    </div>
-
-                    <div class="info-card">
-                        <h3>History</h3>
-                        <ul class="coin-history" id="coin-history"></ul>
-                    </div>
+                <aside class="game-sidebar">
+                    <div class="info-card"><span class="info-label">Totals</span><p>Flips: <strong id="coin-total">0</strong></p><p>Heads: <strong id="coin-heads">0</strong></p><p>Tails: <strong id="coin-tails">0</strong></p></div>
+                    <div class="info-card"><span class="info-label">Streak</span><p class="muted-sm">Current: <span id="coin-streak">0</span></p><p class="muted-sm">Best: <span id="coin-best-streak">0</span></p></div>
+                    <div class="info-card"><span class="info-label">History</span><ul class="coin-history" id="coin-history"></ul></div>
                 </aside>
             </div>
         </div>
     </main>
 
-    <!-- ====== Sudoku 游戏画面 ====== -->
+    <!-- SUDOKU -->
     <main id="sudoku-screen" class="screen">
-        <div class="sudoku-layout">
-            <div class="sudoku-top-bar">
-                <button id="back-to-menu-sudoku-btn"
-                        class="btn ghost"
-                        onclick="switchToMenu()">
-                    &larr; Back
-                </button>
-                <div class="sudoku-title">
-                    <h2>Prism Sudoku</h2>
-                    <span class="subtitle">1-9 输入 · Backspace 删除 · 方向键移动</span>
-                </div>
-                <div class="sudoku-status">
-                    <span id="sudoku-mode-label">Classic</span>
-                    <span class="badge" id="sudoku-difficulty-label">Easy</span>
-                </div>
+        <div class="game-layout">
+            <div class="game-topbar">
+                <button class="back-btn" onclick="switchToMenu()">← Back</button>
+                <div class="game-topbar-title"><h2>Prism Sudoku</h2><span class="subtitle">1-9 to input · Backspace to erase · Arrow keys to navigate</span></div>
+                <div class="topbar-badges"><span id="sudoku-mode-label" class="topbar-badge">Classic</span><span class="badge" id="sudoku-difficulty-label">Easy</span></div>
             </div>
-
-            <div class="sudoku-main">
+            <div class="game-main sudoku-layout-inner">
                 <div class="sudoku-board-wrap">
                     <div id="sudoku-board" class="sudoku-board"></div>
                     <div class="sudoku-overlay" id="sudoku-overlay">
                         <div class="overlay-card">
                             <p class="overlay-title" id="sudoku-overlay-title">Puzzle Solved</p>
-                            <p class="overlay-desc" id="sudoku-overlay-desc">Need another challenge? Spin up a fresh grid.</p>
+                            <p class="overlay-desc" id="sudoku-overlay-desc">Need another challenge?</p>
                             <div class="overlay-actions">
                                 <button class="btn primary" id="sudoku-play-again-btn">New Puzzle</button>
                                 <button class="btn ghost" id="sudoku-continue-btn">Keep Playing</button>
@@ -373,121 +267,30 @@
                         </div>
                     </div>
                 </div>
-
-                <aside class="sudoku-sidebar">
-                    <div class="info-card">
-                        <h3>Session</h3>
-                        <p>Time: <span id="sudoku-timer">0:00</span></p>
-                        <p>Mistakes: <span id="sudoku-mistakes">0</span></p>
-                        <p>Hints: <span id="sudoku-hints">0</span></p>
-                        <p class="muted" id="sudoku-state">Ready</p>
-                    </div>
-
-                    <div class="info-card">
-                        <h3>Mode</h3>
-                        <div class="sudoku-control-row">
-                            <button class="btn small sudoku-mode-btn active" data-mode="classic">Classic</button>
-                            <button class="btn small sudoku-mode-btn" data-mode="killer">Killer</button>
-                        </div>
-                    </div>
-
-                    <div class="info-card">
-                        <h3>Difficulty</h3>
-                        <div class="sudoku-control-row">
-                            <button class="btn small sudoku-difficulty-btn active" data-difficulty="easy">Easy</button>
-                            <button class="btn small sudoku-difficulty-btn" data-difficulty="medium">Medium</button>
-                            <button class="btn small sudoku-difficulty-btn" data-difficulty="hard">Hard</button>
-                            <button class="btn small sudoku-difficulty-btn" data-difficulty="expert">Expert</button>
-                        </div>
-                    </div>
-
-                    <div class="info-card">
-                        <h3>Input Mode</h3>
-                        <div class="sudoku-control-row">
-                            <button id="sudoku-note-toggle" class="btn small">Notes: Off</button>
-                            <button id="sudoku-auto-toggle" class="btn small active">Auto-check: On</button>
-                        </div>
-                        <p class="muted">Press N to toggle notes.</p>
-                    </div>
-
-                    <div class="info-card">
-                        <h3>Actions</h3>
-                        <div class="sudoku-control-row">
-                            <button id="sudoku-newgame-btn" class="btn primary">New Puzzle</button>
-                            <button id="sudoku-hint-btn" class="btn ghost">Hint</button>
-                            <button id="sudoku-clear-btn" class="btn ghost">Clear Cell</button>
-                        </div>
-                    </div>
-
-                    <div class="info-card">
-                        <h3>Validation</h3>
-                        <div class="sudoku-control-row">
-                            <button class="btn small sudoku-limit-btn active" data-limit="0">Limit: Off</button>
-                            <button class="btn small sudoku-limit-btn" data-limit="3">Limit: 3</button>
-                            <button class="btn small sudoku-limit-btn" data-limit="5">Limit: 5</button>
-                        </div>
-                    </div>
-
-                    <div class="info-card">
-                        <h3>Number Pad</h3>
-                        <div class="sudoku-pad" id="sudoku-pad">
-                            <button class="btn small" data-value="1">1</button>
-                            <button class="btn small" data-value="2">2</button>
-                            <button class="btn small" data-value="3">3</button>
-                            <button class="btn small" data-value="4">4</button>
-                            <button class="btn small" data-value="5">5</button>
-                            <button class="btn small" data-value="6">6</button>
-                            <button class="btn small" data-value="7">7</button>
-                            <button class="btn small" data-value="8">8</button>
-                            <button class="btn small" data-value="9">9</button>
-                            <button class="btn small sudoku-erase" data-value="0">Erase</button>
-                        </div>
-                    </div>
-
-                    <div class="info-card">
-                        <h3>Achievements</h3>
-                        <p>Total Solves: <span id="sudoku-total-solves">0</span></p>
-                        <p>Perfect Solves: <span id="sudoku-perfect-solves">0</span></p>
-                        <p>Classic Streak: <span id="sudoku-classic-streak">0</span> / <span id="sudoku-classic-best-streak">0</span></p>
-                        <p>Killer Streak: <span id="sudoku-killer-streak">0</span> / <span id="sudoku-killer-best-streak">0</span></p>
-                        <p>Classic Avg Time: <span id="sudoku-classic-avg">--</span></p>
-                        <p>Killer Avg Time: <span id="sudoku-killer-avg">--</span></p>
-                        <p>Best Time: <span id="sudoku-best-time">--</span></p>
-                        <p>Classic Hardest: <span id="sudoku-classic-hardest">--</span></p>
-                        <p>Killer Hardest: <span id="sudoku-killer-hardest">--</span></p>
-                        <p class="muted" id="sudoku-best-detail">No record yet</p>
-                        <p class="muted" id="sudoku-hardest-detail"></p>
-                    </div>
-
-                    <div class="info-card">
-                        <h3>Killer Rules</h3>
-                        <p class="muted">Cages show sum targets. Digits in a cage cannot repeat.</p>
-                        <p class="muted">Auto-check can be toggled. Wrong entries glow red.</p>
-                    </div>
+                <aside class="game-sidebar">
+                    <div class="info-card"><span class="info-label">Session</span><p>Time: <span id="sudoku-timer">0:00</span></p><p>Mistakes: <span id="sudoku-mistakes">0</span></p><p>Hints: <span id="sudoku-hints">0</span></p><p class="muted-sm" id="sudoku-state">Ready</p></div>
+                    <div class="info-card"><span class="info-label">Mode</span><div class="btn-group"><button class="btn sm sudoku-mode-btn active" data-mode="classic">Classic</button><button class="btn sm sudoku-mode-btn" data-mode="killer">Killer</button></div></div>
+                    <div class="info-card"><span class="info-label">Difficulty</span><div class="btn-group wrap"><button class="btn sm sudoku-difficulty-btn active" data-difficulty="easy">Easy</button><button class="btn sm sudoku-difficulty-btn" data-difficulty="medium">Medium</button><button class="btn sm sudoku-difficulty-btn" data-difficulty="hard">Hard</button><button class="btn sm sudoku-difficulty-btn" data-difficulty="expert">Expert</button></div></div>
+                    <div class="info-card"><span class="info-label">Input</span><div class="btn-group"><button id="sudoku-note-toggle" class="btn sm">Notes: Off</button><button id="sudoku-auto-toggle" class="btn sm active">Auto-check: On</button></div><p class="muted-sm" style="margin-top:4px">N to toggle notes.</p></div>
+                    <div class="info-card"><span class="info-label">Actions</span><div class="btn-group wrap"><button id="sudoku-newgame-btn" class="btn primary sm">New Puzzle</button><button id="sudoku-hint-btn" class="btn ghost sm">Hint</button><button id="sudoku-clear-btn" class="btn ghost sm">Clear</button></div></div>
+                    <div class="info-card"><span class="info-label">Limit</span><div class="btn-group"><button class="btn sm sudoku-limit-btn active" data-limit="0">Off</button><button class="btn sm sudoku-limit-btn" data-limit="3">3</button><button class="btn sm sudoku-limit-btn" data-limit="5">5</button></div></div>
+                    <div class="info-card"><span class="info-label">Number Pad</span><div class="sudoku-pad" id="sudoku-pad"><button class="btn sm" data-value="1">1</button><button class="btn sm" data-value="2">2</button><button class="btn sm" data-value="3">3</button><button class="btn sm" data-value="4">4</button><button class="btn sm" data-value="5">5</button><button class="btn sm" data-value="6">6</button><button class="btn sm" data-value="7">7</button><button class="btn sm" data-value="8">8</button><button class="btn sm" data-value="9">9</button><button class="btn sm sudoku-erase" data-value="0">Erase</button></div></div>
+                    <div class="info-card"><span class="info-label">Stats</span><p class="muted-sm">Total: <span id="sudoku-total-solves">0</span> · Perfect: <span id="sudoku-perfect-solves">0</span></p><p class="muted-sm">Classic: <span id="sudoku-classic-streak">0</span>/<span id="sudoku-classic-best-streak">0</span></p><p class="muted-sm">Killer: <span id="sudoku-killer-streak">0</span>/<span id="sudoku-killer-best-streak">0</span></p><p class="muted-sm">Best: <span id="sudoku-best-time">--</span></p><p class="muted-sm" id="sudoku-best-detail">No record yet</p><p class="muted-sm" id="sudoku-hardest-detail"></p></div>
+                    <div class="info-card"><span class="info-label">Killer Rules</span><p class="muted-sm">Cages show sum targets. No repeats within a cage. Wrong entries glow red.</p></div>
                 </aside>
             </div>
         </div>
     </main>
 
+    <!-- TETRIS -->
     <main id="tetris-screen" class="screen">
-        <div class="tetris-layout">
-            <div class="tetris-top-bar">
-                <button id="back-to-menu-tetris-btn"
-                        class="btn ghost"
-                        onclick="switchToMenu()">
-                    &larr; Back
-                </button>
-                <div class="tetris-title">
-                    <h2>Prismatic Tetris</h2>
-                    <span class="subtitle">方向键 / WASD 移动 · Q/E 旋转 · 空格硬降 · Shift 交换保留</span>
-                </div>
-                <div class="tetris-status">
-                    <span id="tetris-mode-label">Marathon</span>
-                    <span class="badge" id="tetris-stage-label">Stage 1</span>
-                </div>
+        <div class="game-layout">
+            <div class="game-topbar">
+                <button class="back-btn" onclick="switchToMenu()">← Back</button>
+                <div class="game-topbar-title"><h2>Prismatic Tetris</h2><span class="subtitle">Arrow/WASD move · Q/E rotate · Space hard-drop · Shift hold</span></div>
+                <div class="topbar-badges"><span id="tetris-mode-label" class="topbar-badge">Marathon</span><span class="badge" id="tetris-stage-label">Stage 1</span></div>
             </div>
-
-            <div class="tetris-main">
+            <div class="game-main canvas-layout">
                 <div class="tetris-board-wrap">
                     <canvas id="tetris-canvas" width="320" height="640"></canvas>
                     <div class="tetris-overlay" id="tetris-overlay">
@@ -501,259 +304,194 @@
                         </div>
                     </div>
                 </div>
-
-                <aside class="tetris-sidebar">
-                    <div class="info-card">
-                        <h3>Score & Lines</h3>
-                        <p>Score: <span id="tetris-score">0</span></p>
-                        <p>Lines: <span id="tetris-lines">0</span></p>
-                        <p>Level: <span id="tetris-level">1</span></p>
-                        <p class="muted">Goal: <span id="tetris-goal">-</span></p>
-                    </div>
-
-                    <div class="info-card">
-                        <h3>Mode & Stage</h3>
-                        <div class="tetris-mode-row">
-                            <label for="tetris-mode-select" class="muted">Mode</label>
-                            <select id="tetris-mode-select" class="tetris-select">
-                                <option value="marathon">Marathon · 150 Lines</option>
-                                <option value="sprint">Sprint · 40 Lines</option>
-                                <option value="ultra">Ultra · 120s</option>
-                                <option value="gauntlet">Gauntlet · Garbage Rush</option>
-                            </select>
-                        </div>
-                        <div class="tetris-mode-row">
-                            <label for="tetris-stage-select" class="muted">Stage</label>
-                            <select id="tetris-stage-select" class="tetris-select"></select>
-                        </div>
-                        <div class="tetris-actions">
-                            <button class="btn primary" id="tetris-start-btn">Start / Restart</button>
-                            <button class="btn ghost" id="tetris-pause-btn">Pause</button>
-                        </div>
-                        <p class="muted" id="tetris-message">Choose a mode to begin.</p>
-                    </div>
-
-                    <div class="info-card">
-                        <h3>Meter</h3>
-                        <p>Combo: <span id="tetris-combo">0</span></p>
-                        <p>Back-to-back: <span id="tetris-b2b">0</span></p>
-                        <p>Energy: <span id="tetris-energy">0%</span></p>
-                        <div class="tetris-energy-bar">
-                            <div class="tetris-energy-fill" id="tetris-energy-fill"></div>
-                        </div>
-                        <p class="muted">Timer: <span id="tetris-timer">0.0s</span></p>
-                    </div>
-
-                    <div class="info-card">
-                        <h3>Next</h3>
-                        <div class="tetris-mini" id="tetris-next"></div>
-                    </div>
-
-                    <div class="info-card">
-                        <h3>Hold</h3>
-                        <div class="tetris-mini" id="tetris-hold"></div>
-                        <p class="muted">Shift / C to swap once per piece</p>
-                    </div>
-
-                    <div class="info-card">
-                        <h3>Modifiers</h3>
-                        <ul class="tetris-tags" id="tetris-modifiers"></ul>
-                    </div>
+                <aside class="game-sidebar">
+                    <div class="info-card score-card"><span class="info-label">Score</span><p id="tetris-score" class="big-num">0</p><p class="muted-sm">Lines: <span id="tetris-lines">0</span> · Lv: <span id="tetris-level">1</span> · Goal: <span id="tetris-goal">-</span></p></div>
+                    <div class="info-card"><span class="info-label">Mode &amp; Stage</span><div class="field-row" style="margin-top:6px"><label class="muted-sm">Mode</label><select id="tetris-mode-select" class="game-select"><option value="marathon">Marathon · 150 Lines</option><option value="sprint">Sprint · 40 Lines</option><option value="ultra">Ultra · 120s</option><option value="gauntlet">Gauntlet · Garbage</option></select></div><div class="field-row"><label class="muted-sm">Stage</label><select id="tetris-stage-select" class="game-select"></select></div><div class="btn-group" style="margin-top:8px"><button class="btn primary sm" id="tetris-start-btn">Start</button><button class="btn ghost sm" id="tetris-pause-btn">Pause</button></div><p class="muted-sm" id="tetris-message">Choose a mode to begin.</p></div>
+                    <div class="info-card"><span class="info-label">Meter</span><p>Combo: <span id="tetris-combo">0</span> · B2B: <span id="tetris-b2b">0</span></p><p>Energy: <span id="tetris-energy">0%</span></p><div class="tetris-energy-bar"><div class="tetris-energy-fill" id="tetris-energy-fill"></div></div><p class="muted-sm">Timer: <span id="tetris-timer">0.0s</span></p></div>
+                    <div class="info-card"><span class="info-label">Next</span><div class="tetris-mini" id="tetris-next"></div></div>
+                    <div class="info-card"><span class="info-label">Hold</span><div class="tetris-mini" id="tetris-hold"></div><p class="muted-sm">Shift/C to swap once per piece</p></div>
+                    <div class="info-card"><span class="info-label">Modifiers</span><ul class="tag-list" id="tetris-modifiers"></ul></div>
                 </aside>
             </div>
         </div>
     </main>
 
+    <!-- POKER -->
     <main id="poker-screen" class="screen">
-        <div class="poker-layout">
-            <div class="poker-top-bar">
-                <button id="back-to-menu-poker-btn"
-                        class="btn ghost"
-                        onclick="switchToMenu()">
-                    &larr; Back
-                </button>
-                <div class="poker-title">
-                    <h2>Texas Hold'em Odds</h2>
-                    <span class="subtitle">选择手牌与公共牌，快速估算胜率</span>
-                </div>
-                <div class="poker-status">
-                    <span id="poker-status-label">Ready</span>
-                </div>
+        <div class="game-layout">
+            <div class="game-topbar">
+                <button class="back-btn" onclick="switchToMenu()">← Back</button>
+                <div class="game-topbar-title"><h2>Texas Hold'em Odds</h2><span class="subtitle">Select hand and board cards, then calculate equity</span></div>
+                <span id="poker-status-label" class="topbar-badge">Ready</span>
             </div>
-
-            <div class="poker-main">
+            <div class="game-main poker-layout-inner">
                 <section class="poker-table">
                     <div class="poker-row">
                         <div class="poker-row-label">Hero Hand</div>
                         <div class="poker-slot-row">
-                            <div class="poker-slot-wrap">
-                                <span class="poker-slot-tag">Hand 1</span>
-                                <button type="button"
-                                        class="poker-card-slot"
-                                        data-slot-type="hero"
-                                        data-slot-index="0"
-                                        aria-label="Hero card 1"></button>
-                            </div>
-                            <div class="poker-slot-wrap">
-                                <span class="poker-slot-tag">Hand 2</span>
-                                <button type="button"
-                                        class="poker-card-slot"
-                                        data-slot-type="hero"
-                                        data-slot-index="1"
-                                        aria-label="Hero card 2"></button>
-                            </div>
+                            <div class="poker-slot-wrap"><span class="poker-slot-tag">Hand 1</span><button type="button" class="poker-card-slot" data-slot-type="hero" data-slot-index="0" aria-label="Hero card 1"></button></div>
+                            <div class="poker-slot-wrap"><span class="poker-slot-tag">Hand 2</span><button type="button" class="poker-card-slot" data-slot-type="hero" data-slot-index="1" aria-label="Hero card 2"></button></div>
                         </div>
                     </div>
-
                     <div class="poker-row">
                         <div class="poker-row-label">Board</div>
                         <div class="poker-slot-row board">
-                            <div class="poker-slot-wrap">
-                                <span class="poker-slot-tag">Flop 1</span>
-                                <button type="button"
-                                        class="poker-card-slot small"
-                                        data-slot-type="board"
-                                        data-slot-index="0"
-                                        aria-label="Flop 1"></button>
-                            </div>
-                            <div class="poker-slot-wrap">
-                                <span class="poker-slot-tag">Flop 2</span>
-                                <button type="button"
-                                        class="poker-card-slot small"
-                                        data-slot-type="board"
-                                        data-slot-index="1"
-                                        aria-label="Flop 2"></button>
-                            </div>
-                            <div class="poker-slot-wrap">
-                                <span class="poker-slot-tag">Flop 3</span>
-                                <button type="button"
-                                        class="poker-card-slot small"
-                                        data-slot-type="board"
-                                        data-slot-index="2"
-                                        aria-label="Flop 3"></button>
-                            </div>
-                            <div class="poker-slot-wrap">
-                                <span class="poker-slot-tag">Turn</span>
-                                <button type="button"
-                                        class="poker-card-slot small"
-                                        data-slot-type="board"
-                                        data-slot-index="3"
-                                        aria-label="Turn"></button>
-                            </div>
-                            <div class="poker-slot-wrap">
-                                <span class="poker-slot-tag">River</span>
-                                <button type="button"
-                                        class="poker-card-slot small"
-                                        data-slot-type="board"
-                                        data-slot-index="4"
-                                        aria-label="River"></button>
-                            </div>
+                            <div class="poker-slot-wrap"><span class="poker-slot-tag">Flop 1</span><button type="button" class="poker-card-slot small" data-slot-type="board" data-slot-index="0"></button></div>
+                            <div class="poker-slot-wrap"><span class="poker-slot-tag">Flop 2</span><button type="button" class="poker-card-slot small" data-slot-type="board" data-slot-index="1"></button></div>
+                            <div class="poker-slot-wrap"><span class="poker-slot-tag">Flop 3</span><button type="button" class="poker-card-slot small" data-slot-type="board" data-slot-index="2"></button></div>
+                            <div class="poker-slot-wrap"><span class="poker-slot-tag">Turn</span><button type="button" class="poker-card-slot small" data-slot-type="board" data-slot-index="3"></button></div>
+                            <div class="poker-slot-wrap"><span class="poker-slot-tag">River</span><button type="button" class="poker-card-slot small" data-slot-type="board" data-slot-index="4"></button></div>
                         </div>
                     </div>
-
                     <p class="poker-hint" id="poker-selection-hint">Selected: Hand 1</p>
-
                     <div class="poker-actions">
                         <button id="poker-calc-btn" class="btn primary">Calculate</button>
                         <button id="poker-clear-btn" class="btn ghost">Clear Selected</button>
                         <button id="poker-reset-btn" class="btn ghost">Clear All</button>
                     </div>
-
-                    <div class="poker-progress">
-                        <div class="poker-progress-fill" id="poker-progress-fill"></div>
-                    </div>
-
+                    <div class="poker-progress"><div class="poker-progress-fill" id="poker-progress-fill"></div></div>
                     <div class="poker-results">
-                        <div class="poker-equity">
-                            <div class="equity-ring" id="poker-equity-ring">
-                                <div class="equity-value" id="poker-equity-value">--%</div>
-                                <div class="equity-label">Equity</div>
-                            </div>
-                            <p class="equity-sub" id="poker-run-summary">No simulation yet</p>
-                        </div>
+                        <div class="poker-equity"><div class="equity-ring" id="poker-equity-ring"><div class="equity-value" id="poker-equity-value">--%</div><div class="equity-label">Equity</div></div><p class="equity-sub" id="poker-run-summary">No simulation yet</p></div>
                         <div class="poker-stats">
-                            <div class="poker-stat-card">
-                                <div class="stat-header">
-                                    <span class="stat-title">Win</span>
-                                    <span class="stat-value" id="poker-win">--%</span>
-                                </div>
-                                <div class="stat-bar">
-                                    <div class="stat-fill win" id="poker-win-bar"></div>
-                                </div>
-                            </div>
-                            <div class="poker-stat-card">
-                                <div class="stat-header">
-                                    <span class="stat-title">Tie</span>
-                                    <span class="stat-value" id="poker-tie">--%</span>
-                                </div>
-                                <div class="stat-bar">
-                                    <div class="stat-fill tie" id="poker-tie-bar"></div>
-                                </div>
-                            </div>
-                            <div class="poker-stat-card">
-                                <div class="stat-header">
-                                    <span class="stat-title">Lose</span>
-                                    <span class="stat-value" id="poker-lose">--%</span>
-                                </div>
-                                <div class="stat-bar">
-                                    <div class="stat-fill lose" id="poker-lose-bar"></div>
-                                </div>
-                            </div>
+                            <div class="poker-stat-card"><div class="stat-header"><span class="stat-title">Win</span><span class="stat-value" id="poker-win">--%</span></div><div class="stat-bar"><div class="stat-fill win" id="poker-win-bar"></div></div></div>
+                            <div class="poker-stat-card"><div class="stat-header"><span class="stat-title">Tie</span><span class="stat-value" id="poker-tie">--%</span></div><div class="stat-bar"><div class="stat-fill tie" id="poker-tie-bar"></div></div></div>
+                            <div class="poker-stat-card"><div class="stat-header"><span class="stat-title">Lose</span><span class="stat-value" id="poker-lose">--%</span></div><div class="stat-bar"><div class="stat-fill lose" id="poker-lose-bar"></div></div></div>
                         </div>
                     </div>
                 </section>
-
-                <aside class="poker-sidebar">
-                    <div class="info-card">
-                        <h3>Setup</h3>
-                        <div class="poker-control">
-                            <label for="poker-opponents" class="muted">Opponents</label>
-                            <select id="poker-opponents" class="poker-select">
-                                <option value="1">1 Opponent</option>
-                                <option value="2">2 Opponents</option>
-                                <option value="3">3 Opponents</option>
-                                <option value="4">4 Opponents</option>
-                                <option value="5">5 Opponents</option>
-                                <option value="6">6 Opponents</option>
-                                <option value="7">7 Opponents</option>
-                                <option value="8">8 Opponents</option>
-                            </select>
-                        </div>
-                        <div class="poker-control">
-                            <label for="poker-iterations" class="muted">Iterations</label>
-                            <input id="poker-iterations"
-                                   type="range"
-                                   min="1000"
-                                   max="20000"
-                                   step="500"
-                                   value="6000" />
-                            <span id="poker-iterations-value" class="poker-iterations-value">6000</span>
-                        </div>
-                        <div class="poker-control poker-control-actions">
-                            <button id="poker-random-hero-btn" class="btn small">Random Hand</button>
-                            <button id="poker-random-board-btn" class="btn small">Random Board</button>
-                        </div>
-                    </div>
-
-                    <div class="info-card">
-                        <h3>Deck</h3>
-                        <p class="muted">先选中一个卡槽，再点牌面。</p>
-                        <div id="poker-deck" class="poker-deck"></div>
-                    </div>
-
-                    <div class="info-card">
-                        <h3>Notes</h3>
-                        <p class="muted">Monte Carlo 抽样估算，次数越高越稳定。</p>
-                        <p class="muted">平局会按人数平分计入 Equity。</p>
-                    </div>
+                <aside class="game-sidebar">
+                    <div class="info-card"><span class="info-label">Setup</span><div class="field-row" style="margin-top:8px"><label class="muted-sm">Opponents</label><select id="poker-opponents" class="game-select"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option></select></div><div class="field-row"><label class="muted-sm">Iterations</label><input id="poker-iterations" type="range" min="1000" max="20000" step="500" value="6000" /><span id="poker-iterations-value" class="poker-iterations-value">6000</span></div><div class="btn-group" style="margin-top:8px"><button id="poker-random-hero-btn" class="btn sm">Random Hand</button><button id="poker-random-board-btn" class="btn sm">Random Board</button></div></div>
+                    <div class="info-card"><span class="info-label">Deck</span><p class="muted-sm">Select a slot, then click a card.</p><div id="poker-deck" class="poker-deck"></div></div>
+                    <div class="info-card"><span class="info-label">Notes</span><p class="muted-sm">Monte Carlo sampling. More iterations = more accuracy. Ties split equity evenly.</p></div>
                 </aside>
             </div>
         </div>
     </main>
 
-    <footer class="app-footer">
-        <span>Built by Wenhao · Powered by HTML5 Canvas</span>
-    </footer>
+    <!-- SHOOTER -->
+    <main id="shooter-screen" class="screen">
+        <div class="game-layout">
+            <div class="game-topbar">
+                <button class="back-btn" onclick="switchToMenu()">← Back</button>
+                <div class="game-topbar-title"><h2>Neon Shooter</h2><span class="subtitle">← → / A D move · Space shoot · Shift bomb · P pause</span></div>
+                <span id="shooter-level" class="topbar-badge">—</span>
+            </div>
+            <div class="game-main canvas-layout">
+                <div class="shooter-board-wrap">
+                    <canvas id="shooter-canvas" width="420" height="600"></canvas>
+                    <div class="shooter-overlay" id="shooter-overlay">
+                        <div class="overlay-card">
+                            <p class="overlay-title" id="shooter-overlay-title">Ready?</p>
+                            <p class="overlay-desc" id="shooter-overlay-desc">Choose your level and launch!</p>
+                            <div class="overlay-actions">
+                                <button class="btn primary" id="shooter-overlay-primary">Play Again</button>
+                                <button class="btn ghost" id="shooter-overlay-secondary">Restart</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <aside class="game-sidebar">
+                    <div class="info-card score-card"><span class="info-label">Score</span><p id="shooter-score" class="big-num">0</p><p class="muted-sm">Best: <span id="shooter-highscore">0</span></p></div>
+                    <div class="info-card"><span class="info-label">Status</span><p>HP: <span id="shooter-hp">❤❤❤</span></p><p>Kills: <span id="shooter-kills">0 / 20</span></p><p>Bombs: <span id="shooter-bombs">💣</span></p><p class="muted-sm" id="shooter-bomb-cooldown">Bomb: Ready</p></div>
+                    <div class="info-card"><span class="info-label">Power-ups</span><p class="muted-sm">Spread: <span id="shooter-spread">—</span></p><p class="muted-sm">Shield: <span id="shooter-shield">—</span></p></div>
+                    <div class="info-card"><span class="info-label">Setup</span><div class="field-row" style="margin-top:8px"><label class="muted-sm">Level</label><select id="shooter-level-select" class="game-select"><option value="1">Sector 1 — Easy</option><option value="2">Sector 2</option><option value="3">Sector 3</option><option value="4">Sector 4</option><option value="5">Sector 5 — Hard</option></select></div><label class="checkbox-row" style="margin-top:8px"><input type="checkbox" id="shooter-endless-check" /><span class="muted-sm">Endless Mode</span></label><button id="shooter-start-btn" class="btn primary full" style="margin-top:10px">Start Game</button></div>
+                    <div class="info-card"><span class="info-label">Tips</span><p class="muted-sm">💛 Spread — 3-way shot<br>🩵 Shield — absorbs 1 hit<br>💚 Speed — move faster<br>Defeat the boss to advance!</p></div>
+                </aside>
+            </div>
+        </div>
+    </main>
+
+    <!-- GOMOKU -->
+    <main id="gomoku-screen" class="screen">
+        <div class="game-layout">
+            <div class="game-topbar">
+                <button class="back-btn" onclick="switchToMenu()">← Back</button>
+                <div class="game-topbar-title"><h2>Five in a Row</h2><span class="subtitle">Click to place your stone — get 5 in a row to win</span></div>
+                <span id="gomoku-status" class="topbar-badge">Black's turn</span>
+            </div>
+            <div class="game-main canvas-layout">
+                <div class="board-canvas-wrap">
+                    <canvas id="gomoku-canvas" width="600" height="600"></canvas>
+                    <div class="board-overlay" id="gomoku-overlay">
+                        <div class="overlay-card">
+                            <p class="overlay-title" id="gomoku-overlay-title">Game Over</p>
+                            <p class="overlay-desc" id="gomoku-overlay-desc"></p>
+                            <div class="overlay-actions"><button class="btn primary" id="gomoku-overlay-primary">Play Again</button></div>
+                        </div>
+                    </div>
+                </div>
+                <aside class="game-sidebar">
+                    <div class="info-card"><span class="info-label">Score</span><p>⚫ Black: <strong id="gomoku-black-wins">0</strong></p><p>⚪ White: <strong id="gomoku-white-wins">0</strong></p><p class="muted-sm">Moves: <span id="gomoku-move-count">0</span></p></div>
+                    <div class="info-card"><span class="info-label">Mode</span><select id="gomoku-mode-select" class="game-select"><option value="pve">vs AI</option><option value="pvp">Player vs Player</option></select></div>
+                    <div class="info-card"><span class="info-label">Difficulty</span><select id="gomoku-difficulty-select" class="game-select"><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select></div>
+                    <div class="info-card"><button id="gomoku-newgame-btn" class="btn primary full">New Game</button><button id="gomoku-undo-btn" class="btn ghost full" style="margin-top:8px">Undo Move</button></div>
+                    <div class="info-card"><span class="info-label">Rules</span><p class="muted-sm">Place 5 stones in a row (horizontal, vertical or diagonal) to win. Black goes first.</p></div>
+                </aside>
+            </div>
+        </div>
+    </main>
+
+    <!-- XIANGQI -->
+    <main id="xiangqi-screen" class="screen">
+        <div class="game-layout">
+            <div class="game-topbar">
+                <button class="back-btn" onclick="switchToMenu()">← Back</button>
+                <div class="game-topbar-title"><h2>Chinese Chess · Xiangqi</h2><span class="subtitle">Click a piece to select, click destination to move</span></div>
+                <span id="xiangqi-status" class="topbar-badge">Red's turn</span>
+            </div>
+            <div class="game-main canvas-layout">
+                <div class="board-canvas-wrap">
+                    <canvas id="xiangqi-canvas" width="540" height="600"></canvas>
+                    <div class="board-overlay" id="xiangqi-overlay">
+                        <div class="overlay-card">
+                            <p class="overlay-title" id="xiangqi-overlay-title">Game Over</p>
+                            <p class="overlay-desc" id="xiangqi-overlay-desc"></p>
+                            <div class="overlay-actions"><button class="btn primary" id="xiangqi-overlay-primary">Play Again</button></div>
+                        </div>
+                    </div>
+                </div>
+                <aside class="game-sidebar">
+                    <div class="info-card"><span class="info-label">Captured</span><p class="muted-sm">Red: <span id="xiangqi-captured-red"></span></p><p class="muted-sm">Black: <span id="xiangqi-captured-black"></span></p></div>
+                    <div class="info-card"><span class="info-label">Mode</span><select id="xiangqi-mode-select" class="game-select"><option value="pve">vs AI (you are Red)</option><option value="pvp">Player vs Player</option></select></div>
+                    <div class="info-card"><span class="info-label">Difficulty</span><select id="xiangqi-difficulty-select" class="game-select"><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select></div>
+                    <div class="info-card"><button id="xiangqi-newgame-btn" class="btn primary full">New Game</button></div>
+                    <div class="info-card"><span class="info-label">Pieces</span><p class="muted-sm">帅/将 General · 仕/士 Advisor · 相/象 Elephant<br>车/車 Chariot · 马/馬 Horse · 炮/砲 Cannon<br>兵/卒 Soldier</p></div>
+                </aside>
+            </div>
+        </div>
+    </main>
+
+    <!-- CHESS -->
+    <main id="chess-screen" class="screen">
+        <div class="game-layout">
+            <div class="game-topbar">
+                <button class="back-btn" onclick="switchToMenu()">← Back</button>
+                <div class="game-topbar-title"><h2>Chess</h2><span class="subtitle">Click a piece to select, click destination to move</span></div>
+                <span id="chess-status" class="topbar-badge">White's turn</span>
+            </div>
+            <div class="game-main canvas-layout">
+                <div class="board-canvas-wrap">
+                    <canvas id="chess-canvas" width="560" height="560"></canvas>
+                    <div class="board-overlay" id="chess-overlay">
+                        <div class="overlay-card">
+                            <p class="overlay-title" id="chess-overlay-title">Game Over</p>
+                            <p class="overlay-desc" id="chess-overlay-desc"></p>
+                            <div class="overlay-actions"><button class="btn primary" id="chess-overlay-primary">Play Again</button></div>
+                        </div>
+                    </div>
+                </div>
+                <aside class="game-sidebar">
+                    <div class="info-card"><span class="info-label">Captured</span><p class="muted-sm">White: <span id="chess-captured-white"></span></p><p class="muted-sm">Black: <span id="chess-captured-black"></span></p></div>
+                    <div class="info-card"><span class="info-label">Mode</span><select id="chess-mode-select" class="game-select"><option value="pve">vs AI (you are White)</option><option value="pvp">Player vs Player</option></select></div>
+                    <div class="info-card"><span class="info-label">Difficulty</span><select id="chess-difficulty-select" class="game-select"><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select></div>
+                    <div class="info-card"><button id="chess-newgame-btn" class="btn primary full">New Game</button></div>
+                    <div class="info-card"><span class="info-label">Move History</span><div id="chess-move-history" class="move-history"></div></div>
+                </aside>
+            </div>
+        </div>
+    </main>
+
+    <footer class="app-footer">Wenhao's Web Arcade · HTML5 Canvas</footer>
 </div>
 
 <script src="snake.js"></script>
@@ -762,6 +500,11 @@
 <script src="sudoku.js"></script>
 <script src="tetris.js"></script>
 <script src="poker.js"></script>
+<script src="shooter.js"></script>
+<script src="gomoku.js"></script>
+<script src="xiangqi.js"></script>
+<script src="chess.js"></script>
 <script src="main.js"></script>
+<script src="ambient.js"></script>
 </body>
 </html>

@@ -425,6 +425,12 @@ body[data-ambient="off"]::after {
 
 .screen.active {
     display: block;
+    animation: screenIn 0.3s ease-out both;
+}
+
+@keyframes screenIn {
+    from { opacity: 0; transform: translateY(10px); filter: blur(3px); }
+    to   { opacity: 1; transform: translateY(0);    filter: blur(0); }
 }
 
 /* ====== Game Grid（大厅）====== */
@@ -2081,25 +2087,7 @@ body[data-ambient="off"]::after {
     100% { background-position: 0 0, 0 0, 20% 20%, 80% 10%, 50% 80%; }
 }
 
-/* ====== Screen 过渡动画 ====== */
-
-.screen {
-    opacity: 0;
-    pointer-events: none;
-    transform: translateY(12px);
-    filter: blur(4px);
-    transition:
-            opacity 0.28s ease-out,
-            transform 0.28s ease-out,
-            filter 0.28s ease-out;
-}
-
-.screen.active {
-    opacity: 1;
-    pointer-events: auto;
-    transform: translateY(0);
-    filter: blur(0);
-}
+/* Screen transition handled via @keyframes screenIn above */
 
 /* 可选：按钮按下的小压感 */
 .btn.pressed {
@@ -2112,3 +2100,512 @@ body[data-ambient="off"]::after {
 .app-shell::after {
     pointer-events: none;
 }
+
+/* =====================================================
+   BEAUTIFICATION LAYER — Animations & Visual Upgrades
+   ===================================================== */
+
+/* ---- Header: animated title glow ---- */
+.app-header h1 {
+    background: linear-gradient(90deg, var(--accent), var(--accent-3), var(--accent-2), var(--accent));
+    background-size: 300% 100%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: titleGradient 6s linear infinite;
+    text-shadow: none;
+}
+
+@keyframes titleGradient {
+    0%   { background-position: 0% 50%; }
+    100% { background-position: 300% 50%; }
+}
+
+/* ---- Game card entrance stagger ---- */
+.game-grid {
+    animation: gridFadeIn 0.4s ease-out both;
+}
+
+@keyframes gridFadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.game-card:nth-child(1) { animation: cardEnter 0.5s 0.05s ease-out both; }
+.game-card:nth-child(2) { animation: cardEnter 0.5s 0.12s ease-out both; }
+.game-card:nth-child(3) { animation: cardEnter 0.5s 0.19s ease-out both; }
+.game-card:nth-child(4) { animation: cardEnter 0.5s 0.26s ease-out both; }
+.game-card:nth-child(5) { animation: cardEnter 0.5s 0.33s ease-out both; }
+.game-card:nth-child(6) { animation: cardEnter 0.5s 0.40s ease-out both; }
+.game-card:nth-child(7) { animation: cardEnter 0.5s 0.47s ease-out both; }
+
+@keyframes cardEnter {
+    from { opacity: 0; transform: translateY(20px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ---- Game card: animated neon shimmer border on hover ---- */
+.game-card {
+    background: radial-gradient(circle at top left, var(--accent-soft), var(--bg-elevated));
+    /* Add pulsing inner glow */
+    transition: transform var(--transition-med), box-shadow var(--transition-med),
+                border-color var(--transition-med), background var(--transition-med);
+}
+
+.game-card:hover {
+    background: radial-gradient(circle at top left, var(--accent-glow-soft), var(--bg-elevated));
+    box-shadow: 0 32px 90px rgba(0,0,0,0.85), 0 0 0 1px var(--accent-glow-soft),
+                inset 0 0 30px rgba(255,255,255,0.03);
+}
+
+/* ---- Card play buttons: ripple effect ---- */
+.btn.primary {
+    position: relative;
+    overflow: hidden;
+}
+
+.btn.primary::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at center, rgba(255,255,255,0.25) 0%, transparent 70%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    border-radius: inherit;
+}
+
+.btn.primary:hover::after {
+    opacity: 1;
+}
+
+.btn.primary:active {
+    transform: scale(0.96) translateY(1px);
+}
+
+/* ---- Game tags: glow chip ---- */
+.game-tags li {
+    transition: background var(--transition-fast), color var(--transition-fast);
+    background: rgba(255,255,255,0.05);
+}
+
+.game-card:hover .game-tags li {
+    background: var(--accent-soft);
+    color: var(--accent);
+}
+
+/* ---- Info cards: subtle entrance animation when game screen is shown ---- */
+.info-card {
+    transition: transform var(--transition-med), box-shadow var(--transition-med);
+    animation: infoCardIn 0.4s ease-out both;
+}
+
+@keyframes infoCardIn {
+    from { opacity: 0; transform: translateX(8px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ---- Header: floating glow orbs ---- */
+.app-header {
+    position: relative;
+    overflow: hidden;
+    animation: headerAppear 0.6s ease-out both;
+}
+
+@keyframes headerAppear {
+    from { opacity: 0; transform: translateY(-10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.app-header::before {
+    content: "";
+    position: absolute;
+    width: 200px; height: 200px;
+    background: radial-gradient(circle, var(--accent-glow-soft) 0%, transparent 70%);
+    top: -60px; left: 30%;
+    animation: orbDrift 8s ease-in-out infinite alternate;
+    pointer-events: none;
+    opacity: 0.6;
+}
+
+@keyframes orbDrift {
+    from { transform: translateX(-30px) scale(1); }
+    to   { transform: translateX(30px) scale(1.2); }
+}
+
+/* ---- Ambient animation keyframes (referenced in body::before) ---- */
+@keyframes ambientFloat {
+    0%   { transform: translate(0, 0) rotate(0deg); }
+    33%  { transform: translate(-3%, 2%) rotate(4deg); }
+    66%  { transform: translate(2%, -2%) rotate(-3deg); }
+    100% { transform: translate(0, 0) rotate(0deg); }
+}
+
+@keyframes textureDrift {
+    from { background-position: 0 0, 0 0, 0 0, 0 0, 0 0; }
+    to   { background-position: 100px 60px, 80px 40px, 0 0, 0 0, 0 0; }
+}
+
+@keyframes ambientSpin {
+    from { transform: rotate(0deg) scale(1.1); }
+    to   { transform: rotate(360deg) scale(1.1); }
+}
+
+/* ---- Sudoku animation ---- */
+@keyframes sudokuAura {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+
+/* ---- Coin card extra depth ---- */
+.coin-card {
+    transition: box-shadow var(--transition-med);
+}
+
+.coin-card:hover {
+    box-shadow: 0 28px 80px rgba(0,0,0,0.95),
+                0 0 0 1px var(--accent-glow-soft),
+                inset 0 0 40px var(--accent-soft);
+}
+
+.coin-display {
+    transition: box-shadow var(--transition-med), transform var(--transition-med);
+    animation: coinOrbit 6s ease-in-out infinite;
+}
+
+@keyframes coinOrbit {
+    0%, 100% { box-shadow: 0 24px 80px rgba(0,0,0,0.8), inset 0 0 30px var(--panel-accent); }
+    50%       { box-shadow: 0 32px 100px rgba(0,0,0,0.85), inset 0 0 50px var(--accent-soft-2); }
+}
+
+/* ---- Coin: after result flash ---- */
+.coin-face[data-side="heads"] {
+    background: linear-gradient(145deg, #ffd166, #fca311);
+    box-shadow: 0 14px 50px rgba(252,163,17,0.6), inset 0 0 18px rgba(255,255,255,0.5);
+}
+
+.coin-face[data-side="tails"] {
+    background: linear-gradient(145deg, #7ef9ff, #5aaaff);
+    color: #020212;
+    box-shadow: 0 14px 50px rgba(90,170,255,0.5), inset 0 0 18px rgba(255,255,255,0.4);
+}
+
+/* ---- Poker table: better card slot hover ---- */
+.poker-card-slot {
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast),
+                border-color var(--transition-fast), background var(--transition-fast);
+    animation: none;
+}
+
+.poker-card-slot:hover:not([disabled]) {
+    border-color: var(--accent-glow-soft);
+    box-shadow: 0 0 16px var(--accent-glow-soft);
+}
+
+.poker-card-slot.slot-active {
+    border-color: var(--accent);
+    box-shadow: 0 0 20px var(--accent-glow-soft), 0 0 40px rgba(90,170,255,0.15);
+    animation: slotPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes slotPulse {
+    0%, 100% { box-shadow: 0 0 16px var(--accent-glow-soft); }
+    50%       { box-shadow: 0 0 28px var(--accent-glow), 0 0 50px rgba(90,170,255,0.2); }
+}
+
+.poker-card-btn:hover:not(.is-used) {
+    background: var(--accent-soft);
+    border-color: var(--accent-glow-soft);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+}
+
+.poker-card-btn.selected {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+/* ---- Equity ring animation ---- */
+.equity-ring {
+    transition: box-shadow var(--transition-med);
+    animation: ringPulse 4s ease-in-out infinite;
+}
+
+@keyframes ringPulse {
+    0%, 100% { box-shadow: 0 0 20px var(--accent-glow-soft); }
+    50%       { box-shadow: 0 0 40px var(--accent-glow-soft), 0 0 80px rgba(90,170,255,0.1); }
+}
+
+/* ---- Progress & energy bars: animated fill ---- */
+.tetris-energy-fill {
+    background: linear-gradient(90deg, var(--accent), var(--accent-3), var(--accent-2));
+    background-size: 200% 100%;
+    animation: energyFlow 2s linear infinite;
+}
+
+@keyframes energyFlow {
+    from { background-position: 0% 0%; }
+    to   { background-position: 200% 0%; }
+}
+
+/* ---- Snake canvas: breathing glow ---- */
+#snake-canvas {
+    animation: canvasGlow 4s ease-in-out infinite;
+}
+
+@keyframes canvasGlow {
+    0%, 100% { box-shadow: 0 18px 60px rgba(0,0,0,0.9), 0 0 0 1px var(--accent-glow-soft); }
+    50%       { box-shadow: 0 24px 80px rgba(0,0,0,0.95), 0 0 20px var(--accent-glow-soft); }
+}
+
+/* ---- Tetris canvas: same ---- */
+#tetris-canvas {
+    animation: canvasGlow 4s 1s ease-in-out infinite;
+}
+
+/* ====== Shooter Game Layout ====== */
+body[data-game="shooter"] {
+    --panel-accent: var(--accent-soft);
+    --panel-accent-2: var(--accent-soft-2);
+    --panel-accent-3: var(--accent-3-soft);
+}
+
+.shooter-layout {
+    margin-top: 8px;
+    padding: 16px;
+    border-radius: 20px;
+    background: radial-gradient(circle at top, var(--panel-accent), rgba(0,0,0,0.92));
+    border: 1px solid var(--border-subtle);
+    box-shadow: var(--shadow-soft);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.shooter-top-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+
+.shooter-title h2 { margin: 0; font-size: 1.1rem; }
+.shooter-title .subtitle { font-size: 0.8rem; color: var(--text-muted); }
+.shooter-status { font-size: 0.85rem; color: var(--text-muted); }
+
+.shooter-main {
+    display: grid;
+    grid-template-columns: minmax(300px, 1.4fr) minmax(220px, 0.9fr);
+    gap: 16px;
+    align-items: start;
+}
+
+@media (max-width: 900px) {
+    .shooter-main { grid-template-columns: 1fr; }
+}
+
+.shooter-board-wrap {
+    position: relative;
+    border-radius: 18px;
+    overflow: hidden;
+    background: #020212;
+    border: 1px solid var(--accent-glow-soft);
+    box-shadow: 0 18px 60px rgba(0,0,0,0.9), 0 0 30px rgba(90,170,255,0.15);
+    animation: canvasGlow 3s ease-in-out infinite;
+}
+
+#shooter-canvas {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.shooter-overlay {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: linear-gradient(180deg, rgba(2,2,18,0.9), rgba(0,0,0,0.92));
+    backdrop-filter: blur(4px);
+    z-index: 2;
+}
+
+.shooter-overlay.visible { display: flex; }
+
+.shooter-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.shooter-control {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+/* ============================================================
+   XIANGQI
+   ============================================================ */
+.xiangqi-layout {
+    margin-top: 8px;
+    padding: 16px;
+    border-radius: 20px;
+    background: radial-gradient(circle at top, var(--panel-accent), rgba(0,0,0,0.92));
+    border: 1px solid var(--border-subtle);
+    box-shadow: var(--shadow-soft);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.xiangqi-top-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+
+.xiangqi-title h2 { margin: 0; font-size: 1.1rem; }
+.xiangqi-title .subtitle { font-size: 0.8rem; color: var(--text-muted); }
+.xiangqi-status-wrap { font-size: 0.9rem; color: var(--text-muted); }
+
+.xiangqi-main {
+    display: grid;
+    grid-template-columns: minmax(300px, 1.2fr) minmax(220px, 0.8fr);
+    gap: 16px;
+    align-items: start;
+}
+
+@media (max-width: 960px) {
+    .xiangqi-main { grid-template-columns: 1fr; }
+}
+
+.xiangqi-board-wrap {
+    position: relative;
+    border-radius: 18px;
+    overflow: hidden;
+    background: #020212;
+    border: 1px solid var(--accent-glow-soft);
+    box-shadow: 0 18px 60px rgba(0,0,0,0.9), 0 0 30px rgba(90,170,255,0.15);
+    animation: canvasGlow 3s ease-in-out infinite;
+}
+
+#xiangqi-canvas {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.xiangqi-overlay {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: linear-gradient(180deg, rgba(2,2,18,0.9), rgba(0,0,0,0.92));
+    backdrop-filter: blur(4px);
+    z-index: 2;
+}
+
+.xiangqi-overlay.visible { display: flex; }
+
+.xiangqi-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.xiangqi-control {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+/* ====== Chess ====== */
+.chess-layout {
+    margin-top: 8px;
+    padding: 16px;
+    border-radius: 20px;
+    background: radial-gradient(circle at top, var(--panel-accent), rgba(0,0,0,0.92));
+    border: 1px solid var(--border-subtle);
+    box-shadow: var(--shadow-soft);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.chess-top-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+
+.chess-title h2 { margin: 0; font-size: 1.1rem; }
+.chess-title .subtitle { font-size: 0.8rem; color: var(--text-muted); }
+.chess-status-wrap { font-size: 0.9rem; color: var(--text-muted); }
+
+.chess-main {
+    display: grid;
+    grid-template-columns: 640px minmax(220px, 1fr);
+    gap: 16px;
+    align-items: start;
+}
+
+@media (max-width: 960px) {
+    .chess-main { grid-template-columns: 1fr; }
+}
+
+.chess-board-wrap {
+    position: relative;
+    border-radius: 18px;
+    overflow: hidden;
+    background: #020212;
+    border: 1px solid var(--accent-glow-soft);
+    box-shadow: 0 18px 60px rgba(0,0,0,0.9), 0 0 30px rgba(0,255,231,0.12);
+    animation: canvasGlow 3s ease-in-out infinite;
+    width: 640px;
+    height: 640px;
+}
+
+#chess-canvas {
+    display: block;
+    width: 640px;
+    height: 640px;
+}
+
+.chess-overlay {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: linear-gradient(180deg, rgba(2,2,18,0.9), rgba(0,0,0,0.92));
+    backdrop-filter: blur(4px);
+    z-index: 2;
+}
+
+.chess-overlay.visible { display: flex; }
+
+.chess-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.chess-move-entry {
+    padding: 2px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    white-space: pre;
+}
+

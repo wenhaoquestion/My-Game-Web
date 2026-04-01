@@ -72,8 +72,11 @@ function initCoinGame() {
         return now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
     }
 
+    let flipLocked = false;
+
     function flipCoin() {
-        if (!coinFace) return;
+        if (!coinFace || flipLocked) return;
+        flipLocked = true;
 
         // reset any previous animation class so flip can replay
         coinFace.classList.remove("spin");
@@ -86,8 +89,12 @@ function initCoinGame() {
         coinFace.dataset.side = result.toLowerCase();
         coinFace.classList.add("spin");
 
-        coinMessage.textContent = result === "Heads" ? "Heads!" : "Tails!";
-        coinLastResult.textContent = `Last: ${result}`;
+        // Update result after animation settles
+        setTimeout(() => {
+            coinMessage.textContent = result === "Heads" ? "🪙 Heads!" : "🎯 Tails!";
+            coinLastResult.textContent = `Last: ${result}`;
+            flipLocked = false;
+        }, 900);
 
         state.history.push({ side: result, time: formatTime() });
         updateStats(result);

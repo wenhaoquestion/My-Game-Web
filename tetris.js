@@ -69,7 +69,7 @@ const STAGES = [
         gravity: 1000,
         startGarbage: 0,
         garbageInterval: null,
-        modifiers: ["慢速起步", "干净棋盘"],
+        modifiers: ["Slow start", "Clean board"],
     },
     {
         id: "storm",
@@ -77,7 +77,7 @@ const STAGES = [
         gravity: 750,
         startGarbage: 2,
         garbageInterval: 15000,
-        modifiers: ["初始垃圾行", "周期性上升垃圾"],
+        modifiers: ["Garbage at start", "Periodic garbage waves"],
     },
     {
         id: "pulse",
@@ -85,7 +85,7 @@ const STAGES = [
         gravity: 600,
         startGarbage: 4,
         garbageInterval: 10000,
-        modifiers: ["更快下落", "渐进式垃圾"],
+        modifiers: ["Faster fall", "Progressive garbage"],
     },
     {
         id: "void",
@@ -93,7 +93,7 @@ const STAGES = [
         gravity: 500,
         startGarbage: 6,
         garbageInterval: 8000,
-        modifiers: ["高压下落", "密集垃圾攻击"],
+        modifiers: ["High-pressure fall", "Dense garbage attacks"],
     },
 ];
 
@@ -313,15 +313,15 @@ class TetrisGame {
         });
         if (this.mode === "ultra") {
             const li = document.createElement("li");
-            li.textContent = "120 秒高分竞速";
+            li.textContent = "120-second high-score race";
             this.ui.modifiers.appendChild(li);
         } else if (this.mode === "sprint") {
             const li = document.createElement("li");
-            li.textContent = "40 行冲刺计时";
+            li.textContent = "40-line sprint timer";
             this.ui.modifiers.appendChild(li);
         } else if (this.mode === "gauntlet") {
             const li = document.createElement("li");
-            li.textContent = "持续垃圾上升";
+            li.textContent = "Continuous garbage rise";
             this.ui.modifiers.appendChild(li);
         }
     }
@@ -438,13 +438,20 @@ class TetrisGame {
     lockPiece() {
         if (!this.current) return;
         this.clearLockTimer();
+        // Capture piece state now so the closure uses the correct piece
+        // even if this.current is reassigned before the timeout fires.
+        const lockedType = this.current.type;
+        const lockedRotation = this.current.rotation;
+        const lockedX = this.current.x;
+        const lockedY = this.current.y;
+        const lockedBlocks = this.current.blocks;
         this.lockTimer = setTimeout(() => {
-            const shape = this.current.blocks[this.current.rotation];
+            const shape = lockedBlocks[lockedRotation];
             shape.forEach(([dx, dy]) => {
-                const x = this.current.x + dx;
-                const y = this.current.y + dy;
+                const x = lockedX + dx;
+                const y = lockedY + dy;
                 if (y >= 0 && y < BOARD_HEIGHT) {
-                    this.board[y][x] = { color: PIECE_COLORS[this.current.type], type: this.current.type };
+                    this.board[y][x] = { color: PIECE_COLORS[lockedType], type: lockedType };
                 }
             });
             this.handleLines();
@@ -460,7 +467,9 @@ class TetrisGame {
         }
 
         if (filledRows.length > 0) {
-            filledRows.forEach((row) => {
+            // Sort descending so we remove from the bottom up — higher indices
+            // stay valid as we remove lower ones.
+            filledRows.sort((a, b) => b - a).forEach((row) => {
                 this.board.splice(row, 1);
                 this.board.unshift(Array(BOARD_WIDTH).fill(null));
             });
@@ -492,11 +501,11 @@ class TetrisGame {
         this.fallInterval = Math.max(150, this.stage.gravity - this.level * 40);
 
         if (this.mode === "sprint" && this.lines >= MODES.sprint.goalLines) {
-            this.victory("冲刺完成！");
+            this.victory("Sprint Complete!");
         } else if (this.mode === "marathon" && this.lines >= MODES.marathon.goalLines) {
-            this.victory("马拉松通关！");
+            this.victory("Marathon Clear!");
         } else if (this.mode === "gauntlet" && this.lines >= MODES.gauntlet.goalLines) {
-            this.victory("乱斗逃出生天！");
+            this.victory("Gauntlet Survived!");
         }
     }
 
@@ -534,7 +543,7 @@ class TetrisGame {
     togglePause() {
         if (this.state === "playing") {
             this.state = "paused";
-            this.showOverlay("Paused", "按下 Resume 或空格继续");
+            this.showOverlay("Paused", "Press Resume or Space to continue");
         } else if (this.state === "paused") {
             this.hideOverlay();
             this.state = "playing";
@@ -553,12 +562,12 @@ class TetrisGame {
 
     gameOver() {
         this.state = "over";
-        this.showOverlay("Game Over", "再来一局，冲击更高分数！");
+        this.showOverlay("Game Over", "Play again and go for a higher score!");
     }
 
     victory(text) {
         this.state = "over";
-        this.showOverlay(text, "点击 Restart 再战一把吧。");
+        this.showOverlay(text, "Click Restart to play again.");
     }
 
     showOverlay(title, desc) {
@@ -592,7 +601,7 @@ class TetrisGame {
             this.nextGarbageAt = timestamp + this.stage.garbageInterval;
         }
 
-        if (delta > this.fallInterval) {
+        if (delta > this.fallInterval && this.current) {
             if (!this.collides(this.current, this.current.x, this.current.y + 1)) {
                 this.current.y += 1;
                 this.lastFall = timestamp;
@@ -730,9 +739,9 @@ class TetrisGame {
         if (this.state === "playing") {
             this.ui.message.textContent = "Neon storm in play — keep stacking!";
         } else if (this.state === "paused") {
-            this.ui.message.textContent = "暂停中 · 点击 Resume 或空格继续";
+            this.ui.message.textContent = "Paused · Click Resume or press Space";
         } else if (this.state === "over") {
-            this.ui.message.textContent = "本局已结束 · 点击 Start / Restart 再战";
+            this.ui.message.textContent = "Game over · Click Start / Restart to play again";
         } else {
             this.ui.message.textContent = "Choose a mode to begin.";
         }

@@ -620,6 +620,50 @@
         return score;
     }
 
+    // Quiescence search: resolves tactical sequences (captures/promotions) at leaf nodes
+    function quiesce(b, alpha, beta, maximizing, ep, cr) {
+        const stand = evaluateBoard(b);
+        if (maximizing) {
+            if (stand >= beta) return beta;
+            if (stand > alpha) alpha = stand;
+        } else {
+            if (stand <= alpha) return alpha;
+            if (stand < beta) beta = stand;
+        }
+
+        const color = maximizing ? WHITE : BLACK;
+        const moves = allLegalMoves(b, color, ep, cr).filter(m =>
+            b[m.to.row][m.to.col] || m.enPassant || m.promotion
+        );
+
+        // MVV-LVA: most valuable victim, least valuable attacker
+        moves.sort((a, b2) => {
+            const tA = b[a.to.row][a.to.col];
+            const tB = b[b2.to.row][b2.to.col];
+            const vA = tA ? PIECE_VALUE[tA.type] * 10 - PIECE_VALUE[b[a.from.row][a.from.col].type] : 0;
+            const vB = tB ? PIECE_VALUE[tB.type] * 10 - PIECE_VALUE[b[b2.from.row][b2.from.col].type] : 0;
+            return vB - vA;
+        });
+
+        if (maximizing) {
+            for (const move of moves) {
+                const res = applyMove(b, move, cr, ep);
+                const score = quiesce(res.board, alpha, beta, false, res.enPassantTarget, res.castlingRights);
+                if (score >= beta) return beta;
+                if (score > alpha) alpha = score;
+            }
+            return alpha;
+        } else {
+            for (const move of moves) {
+                const res = applyMove(b, move, cr, ep);
+                const score = quiesce(res.board, alpha, beta, true, res.enPassantTarget, res.castlingRights);
+                if (score <= alpha) return alpha;
+                if (score < beta) beta = score;
+            }
+            return beta;
+        }
+    }
+
     function minimax(b, depth, alpha, beta, maximizing, ep, cr) {
         const color = maximizing ? WHITE : BLACK;
         const moves = allLegalMoves(b, color, ep, cr);
@@ -628,13 +672,15 @@
             if (isInCheck(b, color)) return maximizing ? -100000 : 100000;
             return 0; // stalemate
         }
-        if (depth === 0) return evaluateBoard(b);
+        if (depth === 0) return quiesce(b, alpha, beta, maximizing, ep, cr);
 
-        // Move ordering: captures first
+        // MVV-LVA move ordering
         moves.sort((a, b2) => {
-            const cap = b[b2.to.row][b2.to.col] ? 1 : 0;
-            const cap2 = b[a.to.row][a.to.col] ? 1 : 0;
-            return cap - cap2;
+            const tA = b[a.to.row][a.to.col];
+            const tB = b[b2.to.row][b2.to.col];
+            const vA = tA ? PIECE_VALUE[tA.type] * 10 - PIECE_VALUE[b[a.from.row][a.from.col].type] : -1;
+            const vB = tB ? PIECE_VALUE[tB.type] * 10 - PIECE_VALUE[b[b2.from.row][b2.from.col].type] : -1;
+            return vB - vA;
         });
 
         if (maximizing) {
@@ -665,15 +711,15 @@
         if (moves.length === 0) return null;
 
         if (aiDifficulty === "easy") {
-            // Random legal move
             return moves[Math.floor(Math.random() * moves.length)];
         }
 
-        const depth = aiDifficulty === "medium" ? 2 : 3;
+        // Medium=3 plies + quiescence, Hard=4 plies + quiescence
+        const depth = aiDifficulty === "medium" ? 3 : 4;
         let bestMove = null;
         let bestScore = Infinity;
 
-        // Move ordering for root: captures first, then random shuffle among equals
+        // Root move ordering: MVV-LVA captures first
         moves.sort((a, b2) => {
             const capA = board[a.to.row][a.to.col] ? PIECE_VALUE[board[a.to.row][a.to.col].type] : 0;
             const capB = board[b2.to.row][b2.to.col] ? PIECE_VALUE[board[b2.to.row][b2.to.col].type] : 0;
@@ -681,7 +727,6 @@
         });
 
         for (const move of moves) {
-            // AI auto-promotes to queen
             const m = move.promotion ? { ...move, promotion: QUEEN } : move;
             const res = applyMove(board, m, castlingRights, enPassantTarget);
             const score = minimax(res.board, depth - 1, -Infinity, Infinity, true, res.enPassantTarget, res.castlingRights);

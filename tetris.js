@@ -154,6 +154,8 @@ class TetrisGame {
         this.elapsed = 0;
         this.remainingTime = null;
 
+        this.aiMode = false;
+
         this.ui = this.cacheUI();
         this.initStageOptions();
         this.ui.stageSelect.value = this.stage.id;
@@ -191,6 +193,7 @@ class TetrisGame {
             next: document.getElementById("tetris-next"),
             hold: document.getElementById("tetris-hold"),
             modifiers: document.getElementById("tetris-modifiers"),
+            aiToggleBtn: document.getElementById("tetris-ai-btn"),
         };
     }
 
@@ -228,6 +231,9 @@ class TetrisGame {
         this.ui.pauseBtn.addEventListener("click", () => this.togglePause());
         this.ui.overlayPrimary.addEventListener("click", () => this.resumeFromOverlay());
         this.ui.overlaySecondary.addEventListener("click", () => this.startGame());
+        if (this.ui.aiToggleBtn) {
+            this.ui.aiToggleBtn.addEventListener("click", () => this.toggleAI());
+        }
 
         window.addEventListener("keydown", (e) => {
             if (!this.isActiveScreen()) return;
@@ -256,6 +262,8 @@ class TetrisGame {
                 this.holdPiece();
             } else if (e.code === "KeyP") {
                 this.togglePause();
+            } else if (e.code === "KeyB") {
+                this.toggleAI();
             }
         });
     }
@@ -343,6 +351,9 @@ class TetrisGame {
         }
         this.drawPreview();
         this.drawHold();
+        if (this.aiMode && this.state === "playing") {
+            setTimeout(() => this.aiExecute(), 120);
+        }
     }
 
     holdPiece() {
@@ -717,6 +728,119 @@ class TetrisGame {
         slot.className = "tetris-mini";
         this.drawMini(slot, this.hold);
         this.ui.hold.appendChild(slot);
+    }
+
+    toggleAI() {
+        this.aiMode = !this.aiMode;
+        if (this.ui.aiToggleBtn) {
+            this.ui.aiToggleBtn.textContent = this.aiMode ? "AI: ON" : "AI: OFF";
+        }
+        if (this.aiMode && this.state === "playing" && this.current) {
+            setTimeout(() => this.aiExecute(), 120);
+        }
+    }
+
+    // El-Tetris heuristic: evaluate all piece placements and return the best {rotation, x}
+    computeBestPlacement() {
+        if (!this.current) return null;
+        const type = this.current.type;
+        const rotations = TETROMINOES[type];
+        let bestScore = -Infinity;
+        let bestRot = 0, bestX = this.current.x;
+
+        for (let rot = 0; rot < rotations.length; rot++) {
+            const shape = rotations[rot];
+            const minX = Math.min(...shape.map(([x]) => x));
+            const maxX = Math.max(...shape.map(([x]) => x));
+
+            for (let x = -minX; x < BOARD_WIDTH - maxX; x++) {
+                // Check if piece can enter from the top
+                if (this.collides(this.current, x, -1, rot)) continue;
+
+                // Drop to the lowest valid position
+                let y = -1;
+                while (!this.collides(this.current, x, y + 1, rot)) y++;
+
+                // Apply piece to a scratch board
+                const boardCopy = this.board.map(row => [...row]);
+                let valid = true;
+                for (const [dx, dy] of shape) {
+                    const px = x + dx, py = y + dy;
+                    if (py < 0 || py >= BOARD_HEIGHT || px < 0 || px >= BOARD_WIDTH) { valid = false; break; }
+                    boardCopy[py][px] = { color: PIECE_COLORS[type], type };
+                }
+                if (!valid) continue;
+
+                // Clear complete lines
+                let lines = 0;
+                const newBoard = [];
+                for (let row = 0; row < BOARD_HEIGHT; row++) {
+                    if (boardCopy[row].every(c => c)) lines++;
+                    else newBoard.push(boardCopy[row]);
+                }
+                while (newBoard.length < BOARD_HEIGHT) newBoard.unshift(Array(BOARD_WIDTH).fill(null));
+
+                // Column heights
+                const heights = Array(BOARD_WIDTH).fill(0);
+                for (let col = 0; col < BOARD_WIDTH; col++) {
+                    for (let row = 0; row < BOARD_HEIGHT; row++) {
+                        if (newBoard[row][col]) { heights[col] = BOARD_HEIGHT - row; break; }
+                    }
+                }
+
+                // Holes (empty cell with filled cell above in same column)
+                let holes = 0;
+                for (let col = 0; col < BOARD_WIDTH; col++) {
+                    let found = false;
+                    for (let row = 0; row < BOARD_HEIGHT; row++) {
+                        if (newBoard[row][col]) found = true;
+                        else if (found) holes++;
+                    }
+                }
+
+                // Bumpiness (sum of absolute height differences between adjacent columns)
+                let bumpiness = 0;
+                for (let col = 0; col < BOARD_WIDTH - 1; col++) {
+                    bumpiness += Math.abs(heights[col] - heights[col + 1]);
+                }
+
+                const aggregateHeight = heights.reduce((s, h) => s + h, 0);
+
+                // El-Tetris weights (Dellacherie heuristic)
+                const score = -0.510066 * aggregateHeight
+                            + 0.760666 * lines
+                            - 0.35663  * holes
+                            - 0.184483 * bumpiness;
+
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestRot = rot;
+                    bestX = x;
+                }
+            }
+        }
+
+        return { rotation: bestRot, x: bestX };
+    }
+
+    aiExecute() {
+        if (!this.current || this.state !== "playing" || !this.aiMode) return;
+        const best = this.computeBestPlacement();
+        if (!best) return;
+
+        const origY = this.current.y;
+        this.current.rotation = best.rotation;
+        this.current.x = best.x;
+
+        // Drop piece to bottom
+        let y = this.current.y;
+        while (!this.collides(this.current, this.current.x, y + 1)) y++;
+        this.score += Math.max(0, y - origY) * 2;
+        this.current.y = y;
+
+        this.clearLockTimer();
+        this.lockPiece();
+        this.draw();
     }
 
     updateUI() {

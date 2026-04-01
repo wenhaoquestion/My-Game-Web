@@ -222,6 +222,15 @@ window.switchToXiangqi = switchToXiangqi;
 window.switchToChess = switchToChess;
 window.switchToMenu = switchToMenu;
 
+// Prevent arrow keys / Space from scrolling the page.
+// Each game's own keydown handler still receives and processes the events.
+window.addEventListener("keydown", function (e) {
+    const scrollKeys = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "];
+    if (scrollKeys.includes(e.key)) {
+        e.preventDefault();
+    }
+}, { passive: false });
+
 document.addEventListener("DOMContentLoaded", () => {
     console.log("[main.js] DOM ready");
 
@@ -341,23 +350,54 @@ document.addEventListener("DOMContentLoaded", () => {
     const storedTheme = localStorage.getItem(THEME_KEY);
     const themeOptions = ["nebula", "solaris", "aqua", "ember", "verdant"];
     const initialTheme = themeOptions.includes(storedTheme) ? storedTheme : "nebula";
+
+    function updateSwatchActive(theme) {
+        document.querySelectorAll(".swatch").forEach(s => {
+            s.classList.toggle("active", s.dataset.theme === theme);
+        });
+    }
+
     applyTheme(initialTheme);
+    updateSwatchActive(initialTheme);
+
+    // Legacy dropdown support (if present)
     if (themeSelect) {
         themeSelect.value = initialTheme;
         themeSelect.addEventListener("change", (e) => {
             applyTheme(e.target.value);
+            updateSwatchActive(e.target.value);
         });
+    }
+
+    // New swatch buttons
+    document.querySelectorAll(".swatch").forEach(swatch => {
+        swatch.addEventListener("click", () => {
+            const theme = swatch.dataset.theme;
+            applyTheme(theme);
+            updateSwatchActive(theme);
+            if (themeSelect) themeSelect.value = theme;
+        });
+    });
+
+    function setAmbientLabel(isOn) {
+        if (!ambientToggleBtn) return;
+        const labelEl = ambientToggleBtn.querySelector(".ctrl-btn-label");
+        if (labelEl) {
+            labelEl.textContent = isOn ? "Aura On" : "Aura Off";
+        } else {
+            ambientToggleBtn.textContent = `Aura: ${isOn ? "On" : "Off"}`;
+        }
     }
 
     const storedAmbient = localStorage.getItem(AMBIENT_KEY);
     const ambientOn = storedAmbient !== "off";
     applyAmbient(ambientOn);
     if (ambientToggleBtn) {
-        ambientToggleBtn.textContent = `Aura: ${ambientOn ? "On" : "Off"}`;
+        setAmbientLabel(ambientOn);
         ambientToggleBtn.addEventListener("click", () => {
             const isOn = document.body.dataset.ambient !== "on";
             applyAmbient(isOn);
-            ambientToggleBtn.textContent = `Aura: ${isOn ? "On" : "Off"}`;
+            setAmbientLabel(isOn);
         });
     }
 

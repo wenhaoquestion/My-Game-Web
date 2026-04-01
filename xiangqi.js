@@ -445,12 +445,53 @@
         return score;
     }
 
+    // Quiescence search: resolves captures at leaf nodes to avoid horizon effect
+    function quiesce(b, alpha, beta, maximizing) {
+        const stand = evaluateBoard(b);
+        if (maximizing) {
+            if (stand >= beta) return beta;
+            if (stand > alpha) alpha = stand;
+        } else {
+            if (stand <= alpha) return alpha;
+            if (stand < beta) beta = stand;
+        }
+
+        const side = maximizing ? RED : BLACK;
+        // Only captures
+        const moves = getAllLegalMoves(b, side).filter(m => b[m.toRow][m.toCol]);
+
+        // MVV-LVA ordering
+        moves.sort((a, b2) => {
+            const vA = PIECE_VALUES[b[a.toRow][a.toCol]?.type] || 0;
+            const vB = PIECE_VALUES[b[b2.toRow][b2.toCol]?.type] || 0;
+            return vB - vA;
+        });
+
+        if (maximizing) {
+            for (const m of moves) {
+                const nb = applyMove(b, m.fromRow, m.fromCol, m.toRow, m.toCol);
+                const score = quiesce(nb, alpha, beta, false);
+                if (score >= beta) return beta;
+                if (score > alpha) alpha = score;
+            }
+            return alpha;
+        } else {
+            for (const m of moves) {
+                const nb = applyMove(b, m.fromRow, m.fromCol, m.toRow, m.toCol);
+                const score = quiesce(nb, alpha, beta, true);
+                if (score <= alpha) return alpha;
+                if (score < beta) beta = score;
+            }
+            return beta;
+        }
+    }
+
     // Minimax with alpha-beta pruning
     // maximizing = RED's turn
     function minimax(b, depth, alpha, beta, maximizing) {
         const side = maximizing ? RED : BLACK;
 
-        if (depth === 0) return evaluateBoard(b);
+        if (depth === 0) return quiesce(b, alpha, beta, maximizing);
 
         // Check terminal states
         if (!findGeneral(b, RED))   return -Infinity;
@@ -458,18 +499,19 @@
 
         const moves = getAllLegalMoves(b, side);
         if (moves.length === 0) {
-            // Stalemate or checkmate
             if (isInCheck(b, side)) {
                 return maximizing ? -90000 : 90000;
             }
             return 0; // stalemate
         }
 
-        // Move ordering: captures first
+        // MVV-LVA move ordering
         moves.sort((a, b2) => {
-            const capA = b[a.toRow][a.toCol] ? 1 : 0;
-            const capB = b[b2.toRow][b2.toCol] ? 1 : 0;
-            return capB - capA;
+            const tA = b[a.toRow][a.toCol];
+            const tB = b[b2.toRow][b2.toCol];
+            const vA = tA ? (PIECE_VALUES[tA.type] || 0) * 10 - (PIECE_VALUES[b[a.fromRow][a.fromCol]?.type] || 0) : -1;
+            const vB = tB ? (PIECE_VALUES[tB.type] || 0) * 10 - (PIECE_VALUES[b[b2.fromRow][b2.fromCol]?.type] || 0) : -1;
+            return vB - vA;
         });
 
         if (maximizing) {
@@ -497,8 +539,8 @@
 
     function getAIDepth() {
         if (aiDifficulty === "easy")   return 1;
-        if (aiDifficulty === "medium") return 2;
-        return 3; // hard
+        if (aiDifficulty === "medium") return 3;
+        return 4; // hard
     }
 
     function getBestMove(b, side) {
@@ -899,6 +941,20 @@
     }
 
     function postMoveCheck() {
+        // Safety: if a general was somehow captured, end game immediately
+        if (!findGeneral(board, RED)) {
+            winner = BLACK;
+            gameOver = true;
+            showOverlay("黑方胜利！", "Black wins — Red General captured!");
+            return;
+        }
+        if (!findGeneral(board, BLACK)) {
+            winner = RED;
+            gameOver = true;
+            showOverlay("红方胜利！", "Red wins — Black General captured!");
+            return;
+        }
+
         const inCheck = isInCheck(board, currentTurn);
         const noMoves = hasNoMoves(board, currentTurn);
 

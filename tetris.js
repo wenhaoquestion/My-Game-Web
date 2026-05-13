@@ -838,8 +838,24 @@ class TetrisGame {
         this.score += Math.max(0, y - origY) * 2;
         this.current.y = y;
 
+        // Lock immediately — bypasses the LOCK_DELAY timer.
+        // The timer-based lockPiece() gets reset by the game loop every fallInterval ms,
+        // so at high speeds (fallInterval < LOCK_DELAY) the piece would never actually lock.
         this.clearLockTimer();
-        this.lockPiece();
+        const shape = this.current.blocks[this.current.rotation];
+        const lockedType = this.current.type;
+        const lockedX = this.current.x;
+        const lockedY = this.current.y;
+        shape.forEach(([dx, dy]) => {
+            const px = lockedX + dx;
+            const py = lockedY + dy;
+            if (py >= 0 && py < BOARD_HEIGHT) {
+                this.board[py][px] = { color: PIECE_COLORS[lockedType], type: lockedType };
+            }
+        });
+        this.current = null;
+        this.handleLines();
+        this.spawnPiece();
         this.draw();
     }
 

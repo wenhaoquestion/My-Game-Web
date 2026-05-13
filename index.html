@@ -225,20 +225,62 @@
         <div class="game-layout">
             <div class="game-topbar">
                 <button class="back-btn" onclick="switchToMenu()">← Back</button>
-                <div class="game-topbar-title"><h2>Lucky Coin Toss</h2><span class="subtitle">Tap or press Space to flip the coin</span></div>
+                <div class="game-topbar-title"><h2>Lucky Coin</h2><span class="subtitle">Predict the outcome · Press Space to flip</span></div>
                 <span id="coin-last-result" class="topbar-badge">Waiting…</span>
             </div>
             <div class="game-main coin-layout-inner">
                 <div class="coin-stage">
-                    <div class="coin-display" id="coin-display"><div class="coin-face" id="coin-face">?</div></div>
-                    <p class="coin-message" id="coin-message">Ready to try your luck?</p>
+                    <!-- Prediction row -->
+                    <div class="coin-predict-row">
+                        <button class="coin-predict-btn" id="predict-heads" data-side="Heads">Predict Heads</button>
+                        <span class="coin-predict-label" id="coin-predict-status">No prediction</span>
+                        <button class="coin-predict-btn" id="predict-tails" data-side="Tails">Predict Tails</button>
+                    </div>
+                    <!-- 3D Coin scene -->
+                    <div class="coin-scene">
+                        <canvas class="coin-particles" id="coin-particles" width="320" height="320"></canvas>
+                        <div class="coin-3d-wrapper">
+                            <div class="coin-3d" id="coin-face">
+                                <div class="coin-side coin-side-heads">
+                                    <div class="coin-side-inner">
+                                        <div class="coin-symbol">☀</div>
+                                        <div class="coin-label-text">HEADS</div>
+                                    </div>
+                                    <div class="coin-edge-ring"></div>
+                                </div>
+                                <div class="coin-side coin-side-tails">
+                                    <div class="coin-side-inner">
+                                        <div class="coin-symbol">☽</div>
+                                        <div class="coin-label-text">TAILS</div>
+                                    </div>
+                                    <div class="coin-edge-ring"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="coin-shadow" id="coin-shadow"></div>
+                    </div>
+                    <p class="coin-message" id="coin-message">Make your prediction and flip!</p>
                     <div class="coin-actions">
                         <button id="flip-coin-btn" class="btn primary">Flip Coin</button>
                         <button id="reset-coin-btn" class="btn ghost">Reset</button>
                     </div>
                 </div>
                 <aside class="game-sidebar">
-                    <div class="info-card"><span class="info-label">Totals</span><p>Flips: <strong id="coin-total">0</strong></p><p>Heads: <strong id="coin-heads">0</strong></p><p>Tails: <strong id="coin-tails">0</strong></p></div>
+                    <div class="info-card">
+                        <span class="info-label">Stats</span>
+                        <div class="coin-ratio-bar">
+                            <div class="coin-ratio-heads" id="coin-ratio-heads" style="width:50%"></div>
+                            <div class="coin-ratio-tails" id="coin-ratio-tails" style="width:50%"></div>
+                        </div>
+                        <p>Flips: <strong id="coin-total">0</strong></p>
+                        <p>Heads: <strong id="coin-heads">0</strong></p>
+                        <p>Tails: <strong id="coin-tails">0</strong></p>
+                    </div>
+                    <div class="info-card">
+                        <span class="info-label">Prediction</span>
+                        <p class="muted-sm">Correct: <span id="coin-predict-correct">0</span></p>
+                        <p class="muted-sm">Accuracy: <span id="coin-predict-acc">—</span></p>
+                    </div>
                     <div class="info-card"><span class="info-label">Streak</span><p class="muted-sm">Current: <span id="coin-streak">0</span></p><p class="muted-sm">Best: <span id="coin-best-streak">0</span></p></div>
                     <div class="info-card"><span class="info-label">History</span><ul class="coin-history" id="coin-history"></ul></div>
                 </aside>

@@ -104,6 +104,69 @@
         b: { K: "♚", Q: "♛", R: "♜", B: "♝", N: "♞", P: "♟" },
     };
 
+    // ─── Stockfish Worker ─────────────────────────────────────────────────────
+    let sfWorker = null;
+    let sfReady = false;
+    let sfCallback = null; // called with UCI bestmove string when Stockfish responds
+
+    function initStockfish() {
+        try {
+            // Load stockfish.js via importScripts inside a blob worker (avoids CORS same-origin restriction)
+            const blob = new Blob(
+                ['importScripts("https://cdn.jsdelivr.net/npm/stockfish.js@10.0.2/stockfish.js");'],
+                { type: "text/javascript" }
+            );
+            sfWorker = new Worker(URL.createObjectURL(blob));
+            sfWorker.onmessage = function (e) {
+                const line = typeof e.data === "string" ? e.data : "";
+                if (line === "uciok") {
+                    sfWorker.postMessage("setoption name Hash value 32");
+                    sfWorker.postMessage("isready");
+                } else if (line === "readyok") {
+                    sfReady = true;
+                } else if (line.startsWith("bestmove") && sfCallback) {
+                    const parts = line.split(" ");
+                    const uci = parts[1];
+                    if (uci && uci !== "(none)") {
+                        const cb = sfCallback;
+                        sfCallback = null;
+                        cb(uci);
+                    } else if (sfCallback) {
+                        // No move found (stalemate/checkmate already handled)
+                        sfCallback = null;
+                        aiThinking = false;
+                    }
+                }
+            };
+            sfWorker.onerror = function () { sfWorker = null; sfReady = false; };
+            sfWorker.postMessage("uci");
+        } catch (err) {
+            sfWorker = null;
+        }
+    }
+
+    // Convert UCI square notation (e.g. "e2") to {row, col} on our 0-indexed board
+    function uciSquare(sq) {
+        return { row: 8 - parseInt(sq[1]), col: sq.charCodeAt(0) - 97 };
+    }
+
+    // Convert a UCI move string ("e2e4", "e7e8q") to an internal move object,
+    // then match against legal moves to pick up flags (castling, enPassant, etc.)
+    function uciToLegalMove(uci) {
+        const from = uciSquare(uci.slice(0, 2));
+        const to   = uciSquare(uci.slice(2, 4));
+        const promoChar = uci[4];
+        const promoMap  = { q: QUEEN, r: ROOK, b: BISHOP, n: KNIGHT };
+        const promo     = promoChar ? (promoMap[promoChar] || QUEEN) : null;
+
+        const legalMoves = allLegalMoves(board, BLACK, enPassantTarget, castlingRights);
+        return legalMoves.find(m =>
+            m.from.row === from.row && m.from.col === from.col &&
+            m.to.row   === to.row   && m.to.col   === to.col &&
+            (!promo || m.promotion === promo)
+        ) || null;
+    }
+
     // ─── State ────────────────────────────────────────────────────────────────
     let canvas, ctx;
     let board;          // 8×8 array of {color, type} or null
@@ -187,6 +250,11 @@
                    + (castlingRights.b.K ? "k" : "") + (castlingRights.b.Q ? "q" : "");
         fen += " " + (enPassantTarget ? String.fromCharCode(97 + enPassantTarget.col) + (8 - enPassantTarget.row) : "-");
         return fen;
+    }
+
+    // Full FEN including halfmove clock and fullmove number (required by Stockfish)
+    function boardToFullFEN() {
+        return boardToFEN() + " " + halfMoveClock + " " + fullMoveNumber;
     }
 
     function recordPosition() {
@@ -743,6 +811,27 @@
         if (aiThinking) return;
         aiThinking = true;
         updateStatus("AI is thinking...");
+
+        // Hard mode: use Stockfish engine when available
+        if (aiDifficulty === "hard" && sfWorker && sfReady) {
+            const fen = boardToFullFEN();
+            sfCallback = function (uci) {
+                aiThinking = false;
+                const move = uciToLegalMove(uci);
+                if (move) {
+                    executeMove(move, true);
+                } else {
+                    // Fallback to local minimax if UCI move can't be matched
+                    const fallback = getBestMove();
+                    if (fallback) executeMove(fallback, true);
+                }
+            };
+            sfWorker.postMessage("position fen " + fen);
+            sfWorker.postMessage("go movetime 1500");
+            return;
+        }
+
+        // Easy / Medium: use local minimax
         setTimeout(() => {
             const move = getBestMove();
             aiThinking = false;
@@ -1149,6 +1238,9 @@
     window.initChessGame = function () {
         canvas = document.getElementById("chess-canvas");
         if (!canvas) { console.error("chess-canvas not found"); return; }
+
+        // Pre-load Stockfish so it's ready when Hard mode is selected
+        initStockfish();
 
         canvas.width = CANVAS_SIZE;
         canvas.height = CANVAS_SIZE;

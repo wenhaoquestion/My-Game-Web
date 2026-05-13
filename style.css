@@ -248,6 +248,21 @@ body {
     justify-content: center;
     position: relative;
     isolation: isolate;
+    overflow-x: hidden;
+}
+
+#ambient-canvas {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    max-width: none;
+    max-height: none;
+    display: block;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.72;
+    transition: opacity 0.4s ease;
 }
 
 body::before,
@@ -291,6 +306,10 @@ body[data-ambient="off"]::after {
     opacity: 0;
 }
 
+body[data-ambient="off"] #ambient-canvas {
+    opacity: 0;
+}
+
 /* ====== App Shell ====== */
 
 .app-shell {
@@ -302,6 +321,7 @@ body[data-ambient="off"]::after {
     gap: 16px;
     position: relative;
     z-index: 1;
+    overflow-x: clip;
 }
 
 .app-shell::before,
@@ -3264,6 +3284,171 @@ body[data-game="chess"] {
 
     .menu-hero-title {
         font-size: 1.8rem;
+    }
+}
+
+@media (max-width: 720px) {
+    html,
+    body {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    body {
+        display: block;
+    }
+
+    .app-shell {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        padding: 14px 10px 12px;
+    }
+
+    .app-header,
+    .screen,
+    .game-layout,
+    .game-main,
+    .category-section,
+    .menu-hero,
+    .game-sidebar,
+    .info-card,
+    .poker-table,
+    .coin-stage,
+    .sudoku-board-wrap,
+    .board-canvas-wrap,
+    .tetris-board-wrap,
+    .shooter-board-wrap {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .app-header {
+        align-items: flex-start;
+    }
+
+    .header-brand,
+    .header-controls,
+    .theme-picker,
+    .theme-swatches,
+    .topbar-badges {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .header-controls {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .game-grid {
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+    }
+
+    .canvas-layout,
+    .coin-layout-inner,
+    .poker-layout-inner {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .sudoku-layout-inner {
+        align-items: stretch;
+    }
+
+    .board-2048 {
+        width: min(340px, 100%);
+        height: auto;
+        aspect-ratio: 1;
+        margin-inline: auto;
+    }
+
+    .board-canvas-wrap,
+    .tetris-board-wrap,
+    .shooter-board-wrap,
+    .sudoku-board-wrap {
+        width: 100%;
+        margin-inline: auto;
+    }
+
+    #snake-canvas,
+    #tetris-canvas,
+    #shooter-canvas,
+    #gomoku-canvas,
+    #xiangqi-canvas,
+    #chess-canvas,
+    .board-canvas-wrap canvas {
+        width: 100% !important;
+        max-width: 100%;
+        height: auto !important;
+    }
+
+    .sudoku-board {
+        --sudoku-cell: min(9.6vw, 38px);
+        width: max-content;
+        max-width: 100%;
+        margin-inline: auto;
+        padding: 8px;
+        border-radius: 16px;
+    }
+
+    .sudoku-pad {
+        grid-template-columns: repeat(5, minmax(44px, 1fr));
+    }
+
+    .coin-stage {
+        padding: 22px 14px;
+    }
+
+    .coin-predict-row,
+    .coin-actions,
+    .overlay-actions,
+    .poker-actions {
+        width: 100%;
+    }
+
+    .coin-predict-btn,
+    .coin-actions .btn,
+    .overlay-actions .btn,
+    .poker-actions .btn {
+        flex: 1 1 120px;
+    }
+
+    .coin-scene {
+        width: min(220px, 100%);
+    }
+
+    .coin-particles {
+        width: min(320px, 100vw);
+        height: min(320px, 100vw);
+    }
+
+    .poker-table {
+        padding: 14px;
+        overflow: hidden;
+    }
+
+    .poker-slot-row {
+        justify-content: center;
+    }
+
+    .poker-card-slot {
+        width: 74px;
+        height: 104px;
+    }
+
+    .poker-card-slot.small {
+        width: 62px;
+        height: 88px;
+    }
+
+    .poker-deck {
+        margin-inline: -4px;
+        padding-inline: 4px;
+    }
+
+    .poker-deck-row {
+        min-width: 382px;
     }
 }
 

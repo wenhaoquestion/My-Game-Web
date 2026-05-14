@@ -724,8 +724,90 @@
         return canvas;
     }
 
+    function cleanDigitMask(rawMask, width, height) {
+        const components = connectedComponents(rawMask, width, height);
+        const cleaned = new Uint8Array(rawMask.length);
+        const cellArea = width * height;
+        let kept = 0;
+        components.forEach((component) => {
+            const cx = component.x + component.w / 2;
+            const cy = component.y + component.h / 2;
+            const areaRatio = component.area / cellArea;
+            const heightRatio = component.h / height;
+            const widthRatio = component.w / width;
+            const central = cx > width * 0.12 && cx < width * 0.88 && cy > height * 0.08 && cy < height * 0.92;
+            const plausible =
+                areaRatio >= 0.003 &&
+                areaRatio <= 0.26 &&
+                heightRatio >= 0.16 &&
+                heightRatio <= 0.86 &&
+                widthRatio >= 0.035 &&
+                widthRatio <= 0.72 &&
+                central;
+            if (!plausible) return;
+            for (let y = component.y; y < component.y + component.h; y += 1) {
+                for (let x = component.x; x < component.x + component.w; x += 1) {
+                    const index = y * width + x;
+                    if (rawMask[index]) {
+                        cleaned[index] = 1;
+                        kept += 1;
+                    }
+                }
+            }
+        });
+        return { mask: cleaned, count: kept };
+    }
+
     function classifyDigitTemplate(cellCanvas) {
-        const normalized = normalizedMaskFromCellCanvas(cellCanvas);
+        const ctx = cellCanvas.getContext("2d", { willReadFrequently: true });
+        const { width, height } = cellCanvas;
+        const image = ctx.getImageData(0, 0, width, height);
+        const lums = [];
+        const sats = [];
+        for (let i = 0; i < image.data.length; i += 4) {
+            const r = image.data[i];
+            const g = image.data[i + 1];
+            const b = image.data[i + 2];
+            lums.push(luminance(r, g, b));
+            sats.push(saturation(r, g, b));
+        }
+        const mean = lums.reduce((total, value) => total + value, 0) / Math.max(1, lums.length);
+        const candidates = [];
+
+        const darkRaw = new Uint8Array(width * height);
+        const lightRaw = new Uint8Array(width * height);
+        for (let i = 0; i < lums.length; i += 1) {
+            if (lums[i] < Math.min(150, mean - 18) && sats[i] < 0.72) {
+                darkRaw[i] = 1;
+            }
+            if (lums[i] > Math.max(145, mean + 28) && sats[i] < 0.58) {
+                lightRaw[i] = 1;
+            }
+        }
+
+        const darkClean = cleanDigitMask(darkRaw, width, height);
+        const lightClean = cleanDigitMask(lightRaw, width, height);
+        if (darkClean.count >= 8) {
+            candidates.push(fitMask(darkClean.mask, width, height, OCR_TEMPLATE_WIDTH, OCR_TEMPLATE_HEIGHT));
+        }
+        if (lightClean.count >= 8) {
+            candidates.push(fitMask(lightClean.mask, width, height, OCR_TEMPLATE_WIDTH, OCR_TEMPLATE_HEIGHT));
+        }
+        if (!candidates.length) {
+            candidates.push(normalizedMaskFromCellCanvas(cellCanvas));
+        }
+
+        let bestResult = { value: 0, confidence: 0, margin: 0, canvas: maskToCanvas(new Uint8Array(OCR_TEMPLATE_WIDTH * OCR_TEMPLATE_HEIGHT), OCR_TEMPLATE_WIDTH, OCR_TEMPLATE_HEIGHT) };
+        for (const normalized of candidates) {
+            const result = classifyNormalizedDigitMask(normalized);
+            if (result.confidence > bestResult.confidence) {
+                bestResult = result;
+            }
+        }
+        return bestResult;
+    }
+
+    function classifyNormalizedDigitMask(normalized) {
         if (normalized.count < 8) {
             return { value: 0, confidence: 0, margin: 0, canvas: maskToCanvas(normalized.mask, OCR_TEMPLATE_WIDTH, OCR_TEMPLATE_HEIGHT) };
         }
@@ -1163,6 +1245,7 @@
             this.ocrDeepEl = document.getElementById("ten-helper-ocr-deep");
             this.ocrStatusEl = document.getElementById("ten-helper-ocr-status");
             this.ocrCanvas = document.getElementById("ten-helper-ocr-canvas");
+            this.ocrCard = document.querySelector(".ten-ocr-card");
             this.inputs = [];
             this.playbackCells = [];
             this.solution = null;
@@ -1214,6 +1297,41 @@
             this.ocrCanvas.addEventListener("pointercancel", () => {
                 this.ocrDragging = false;
             });
+            this.setupOcrDropTargets();
+        }
+
+        setupOcrDropTargets() {
+            const targets = [this.ocrCard, document.getElementById("ten-helper-screen")].filter(Boolean);
+            targets.forEach((target) => {
+                target.addEventListener("dragenter", (event) => this.handleOcrDrag(event));
+                target.addEventListener("dragover", (event) => this.handleOcrDrag(event));
+                target.addEventListener("dragleave", (event) => {
+                    event.preventDefault();
+                    this.ocrCard?.classList.remove("dragover");
+                });
+                target.addEventListener("drop", (event) => this.handleOcrDrop(event));
+            });
+        }
+
+        handleOcrDrag(event) {
+            event.preventDefault();
+            this.ocrCard?.classList.add("dragover");
+            if (event.dataTransfer) {
+                event.dataTransfer.dropEffect = "copy";
+            }
+        }
+
+        handleOcrDrop(event) {
+            event.preventDefault();
+            this.ocrCard?.classList.remove("dragover");
+            const file = Array.from(event.dataTransfer?.files || []).find((item) =>
+                /^image\//.test(item.type || "") || /\.(png|jpe?g|webp)$/i.test(item.name || "")
+            );
+            if (file) {
+                this.loadOcrImage(file);
+            } else {
+                this.setOcrStatus("Drop image only");
+            }
         }
 
         renderInputs(grid, warnings = []) {

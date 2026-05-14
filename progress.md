@@ -8,6 +8,7 @@ Progress:
 - Verified desktop and mobile layouts with Playwright screenshots. Verified Merge 10 start/drag/score/countdown and helper demo/solve/next-step playback. `web_game_playwright_client` also enters both new screens and reports state without console errors.
 - Added browser-side OCR to `合十消除助手`: screenshot upload, preview crop, auto crop, manual crop by dragging, fast template digit OCR, low-confidence yellow cell marking, and optional Deep OCR via Tesseract.js for difficult cells.
 - Verified OCR with a generated 16x10 high-contrast board: 160/160 cells recognized with 0 warnings. Verified manual-crop OCR on a dark in-arcade Merge 10 screenshot: 139/160 cells filled, with uncertain cells marked for correction.
+- Improved OCR for the user's WeChat-style screenshot (green board + white cards + black digits). The recognizer now extracts black digit strokes instead of the white tile background, and the helper supports dropping images directly onto the OCR area or helper screen. Verified the provided JPG via simulated drag/drop: 160/160 correct, 0 warnings.
 
 TODO:
 - Optional future improvement: tune the dark-theme screenshot classifier further, or add a small local/offline OCR model bundle so Deep OCR does not need to load Tesseract.js from CDN.

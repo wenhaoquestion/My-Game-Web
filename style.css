@@ -202,6 +202,18 @@ body[data-game="2048"] {
     --panel-accent-3: var(--accent-soft-2);
 }
 
+body[data-game="merge10"] {
+    --panel-accent: rgba(255, 209, 102, 0.2);
+    --panel-accent-2: var(--accent-soft);
+    --panel-accent-3: rgba(255, 110, 180, 0.16);
+}
+
+body[data-game="ten-helper"] {
+    --panel-accent: rgba(71, 224, 139, 0.18);
+    --panel-accent-2: rgba(255, 209, 102, 0.14);
+    --panel-accent-3: var(--accent-soft);
+}
+
 body[data-game="coin"] {
     --panel-accent: var(--accent-soft-2);
     --panel-accent-2: var(--accent-soft);
@@ -236,10 +248,15 @@ html, body {
     margin: 0;
     padding: 0;
     background: radial-gradient(circle at top, var(--page-glow), var(--page-bg) 60%);
+    background-color: var(--page-bg);
     color: var(--text);
     font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
     "Segoe UI", sans-serif;
     min-height: 100vh;
+}
+
+html {
+    background-color: var(--page-bg);
 }
 
 body {
@@ -3622,6 +3639,324 @@ body[data-game="chess"] {
 
     .poker-deck-row {
         min-width: 382px;
+    }
+}
+
+/* ---------- Merge 10 and Ten Helper ---------- */
+
+.game-input {
+    min-width: 0;
+    width: 100%;
+    min-height: 34px;
+    padding: 5px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.14);
+    background: rgba(5,7,22,0.72);
+    color: var(--text);
+    outline: none;
+}
+
+.game-input:focus-visible {
+    border-color: var(--accent-glow-soft);
+    box-shadow: 0 0 0 2px rgba(90,170,255,0.14);
+}
+
+.merge10-play-layout {
+    grid-template-columns: minmax(320px, 1fr) 268px;
+}
+
+.merge10-stage {
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-width: 0;
+    padding: 18px;
+    border-radius: 16px;
+    background:
+        linear-gradient(135deg, rgba(255,209,102,0.12), rgba(90,170,255,0.08)),
+        rgba(5,5,20,0.92);
+    border: 1px solid var(--accent-glow-soft);
+    box-shadow: 0 18px 60px rgba(0,0,0,0.9);
+    overflow: hidden;
+}
+
+.merge10-board,
+.ten-helper-grid {
+    display: grid;
+    grid-template-columns: repeat(10, minmax(0, 1fr));
+    gap: 4px;
+    width: min(100%, 430px);
+    margin-inline: auto;
+}
+
+.merge10-board {
+    touch-action: none;
+    user-select: none;
+}
+
+.merge10-cell,
+.ten-helper-cell,
+.ten-helper-grid input {
+    display: grid;
+    place-items: center;
+    aspect-ratio: 1 / 1;
+    min-width: 0;
+    min-height: 0;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background:
+        linear-gradient(180deg, rgba(255,255,255,0.1), rgba(255,255,255,0.02)),
+        rgba(11,12,30,0.88);
+    color: var(--text);
+    font-size: 1rem;
+    font-weight: 850;
+    line-height: 1;
+}
+
+.merge10-cell {
+    cursor: pointer;
+    transition: transform 120ms ease, border-color 120ms ease, background 120ms ease, opacity 160ms ease;
+}
+
+.merge10-cell:hover {
+    border-color: rgba(255,209,102,0.55);
+}
+
+.merge10-cell.selected,
+.ten-helper-cell.rect {
+    border-color: #ffd166;
+    background: linear-gradient(180deg, rgba(255,209,102,0.34), rgba(255,159,67,0.16));
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.16);
+}
+
+.merge10-cell.selected.valid {
+    border-color: #47e08b;
+    background: linear-gradient(180deg, rgba(71,224,139,0.34), rgba(47,217,165,0.15));
+}
+
+.merge10-cell.selected.invalid {
+    border-color: #ff6b6b;
+    background: linear-gradient(180deg, rgba(255,107,107,0.3), rgba(255,77,109,0.12));
+}
+
+.merge10-cell.empty,
+.ten-helper-cell.empty {
+    color: transparent;
+    background: rgba(255,255,255,0.045);
+    border-color: rgba(255,255,255,0.06);
+    opacity: 0.62;
+}
+
+.merge10-cell.removed,
+.ten-helper-cell.removing {
+    transform: scale(0.82);
+    opacity: 0;
+}
+
+.ten-helper-layout {
+    display: grid;
+    grid-template-columns: minmax(320px, 0.95fr) minmax(360px, 1.05fr);
+    gap: 14px;
+    align-items: start;
+}
+
+.ten-helper-panel {
+    min-width: 0;
+    padding: 14px;
+    border-radius: 12px;
+    background:
+        linear-gradient(135deg, var(--panel-accent), rgba(255,255,255,0.035)),
+        var(--bg-panel);
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: 0 18px 56px rgba(0,0,0,0.78);
+}
+
+.ten-helper-panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.ten-helper-panel-head h3 {
+    margin: 0;
+    font-size: 0.98rem;
+}
+
+.toolbar.compact {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.ten-ocr-card {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 10px;
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.035);
+}
+
+.ten-ocr-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.ten-ocr-deep {
+    margin-left: auto;
+    color: var(--text-muted);
+}
+
+.ten-ocr-status {
+    flex: 1 1 130px;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    text-align: right;
+}
+
+.ten-ocr-canvas {
+    display: block;
+    width: auto;
+    max-width: 100%;
+    height: auto;
+    max-height: 360px;
+    margin-inline: auto;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(0,0,0,0.32);
+    cursor: crosshair;
+}
+
+.ten-helper-grid input {
+    width: 100%;
+    padding: 0;
+    text-align: center;
+    font-family: inherit;
+    outline: none;
+}
+
+.ten-helper-grid input:focus {
+    border-color: #ffd166;
+    box-shadow: 0 0 0 2px rgba(255,209,102,0.18);
+}
+
+.ten-helper-grid input.warning {
+    border-color: #ffd166;
+    background: linear-gradient(180deg, rgba(255,209,102,0.22), rgba(255,159,67,0.08));
+}
+
+.ten-helper-playback-grid {
+    margin-top: 10px;
+}
+
+.ten-helper-controls {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin: 12px 0;
+}
+
+.ten-helper-controls label {
+    display: grid;
+    gap: 5px;
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.ten-helper-summary,
+.ten-helper-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.ten-helper-summary {
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.04);
+    color: var(--text-muted);
+    font-size: 0.82rem;
+}
+
+.ten-helper-summary strong {
+    color: var(--text);
+}
+
+.ten-helper-actions {
+    justify-content: flex-end;
+    margin-top: 10px;
+}
+
+.ten-helper-move-list {
+    max-height: 210px;
+    overflow: auto;
+    margin: 10px 0 0;
+    padding-left: 22px;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    line-height: 1.55;
+}
+
+.ten-helper-move-list li {
+    padding: 3px 4px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.ten-helper-move-list li.active {
+    background: rgba(255,209,102,0.14);
+    color: var(--text);
+}
+
+@media (max-width: 980px) {
+    .merge10-play-layout,
+    .ten-helper-layout {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 720px) {
+    .merge10-stage,
+    .ten-helper-panel {
+        padding: 10px;
+    }
+
+    .merge10-board,
+    .ten-helper-grid {
+        gap: 3px;
+        width: min(100%, 370px);
+    }
+
+    .merge10-cell,
+    .ten-helper-cell,
+    .ten-helper-grid input {
+        border-radius: 6px;
+        font-size: 0.86rem;
+    }
+
+    .ten-helper-controls {
+        grid-template-columns: 1fr;
+    }
+
+    .ten-ocr-deep {
+        margin-left: 0;
+    }
+
+    .ten-ocr-status {
+        flex-basis: 100%;
+        text-align: left;
     }
 }
 

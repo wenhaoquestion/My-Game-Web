@@ -17,7 +17,7 @@
             <div class="brand-icon">◈</div>
             <div class="brand-text">
                 <h1>Wenhao's Arcade</h1>
-                <p class="brand-sub">10 games · Play now</p>
+                <p class="brand-sub">12 games · Play now</p>
             </div>
         </div>
         <div class="header-controls">
@@ -91,6 +91,26 @@
                         <h2 class="card-title">2048 Puzzle</h2>
                         <p class="card-desc">Slide and merge tiles to reach 2048 with smooth animations.</p>
                         <div class="card-tags"><span class="tag">Puzzle</span><span class="tag">Grid</span></div>
+                    </div>
+                    <div class="card-play"><span class="play-arrow">▶</span></div>
+                </article>
+                <article class="game-card" onclick="switchToMerge10()">
+                    <div class="card-glow"></div>
+                    <div class="card-icon">➕</div>
+                    <div class="card-body">
+                        <h2 class="card-title">合成10 · Merge 10</h2>
+                        <p class="card-desc">Select rectangles that add to 10, beat your custom countdown, and chase the best score.</p>
+                        <div class="card-tags"><span class="tag">Puzzle</span><span class="tag">Timer</span><span class="tag">Score Modes</span></div>
+                    </div>
+                    <div class="card-play"><span class="play-arrow">▶</span></div>
+                </article>
+                <article class="game-card" onclick="switchToTenHelper()">
+                    <div class="card-glow"></div>
+                    <div class="card-icon">🧮</div>
+                    <div class="card-body">
+                        <h2 class="card-title">合十消除助手</h2>
+                        <p class="card-desc">Edit a 16×10 board, solve merge-to-ten routes, and replay the strategy step by step.</p>
+                        <div class="card-tags"><span class="tag">Solver</span><span class="tag">Playback</span></div>
                     </div>
                     <div class="card-play"><span class="play-arrow">▶</span></div>
                 </article>
@@ -216,6 +236,101 @@
                     <div class="info-card"><button id="game2048-newgame-btn" class="btn primary full">New Game</button></div>
                     <div class="info-card"><span class="info-label">Board Size</span><div class="btn-group"><button class="btn sm" data-board-size="3">3×3</button><button class="btn sm" data-board-size="4">4×4</button><button class="btn sm" data-board-size="5">5×5</button><button class="btn sm" data-board-size="6">6×6</button></div></div>
                 </aside>
+            </div>
+        </div>
+    </main>
+
+    <!-- MERGE 10 -->
+    <main id="merge10-screen" class="screen">
+        <div class="game-layout">
+            <div class="game-topbar">
+                <button class="back-btn" onclick="switchToMenu()">← Back</button>
+                <div class="game-topbar-title"><h2>合成10 · Merge 10</h2><span class="subtitle">Drag a rectangle whose visible numbers add to 10</span></div>
+                <span id="merge10-status" class="topbar-badge">Ready</span>
+            </div>
+            <div class="game-main canvas-layout merge10-play-layout">
+                <div class="merge10-stage">
+                    <div id="merge10-board" class="merge10-board" aria-label="Merge 10 board"></div>
+                    <div class="board-overlay" id="merge10-overlay">
+                        <div class="overlay-card">
+                            <p class="overlay-title" id="merge10-overlay-title">Ready</p>
+                            <p class="overlay-desc" id="merge10-overlay-desc"></p>
+                            <div class="overlay-actions">
+                                <button class="btn primary" id="merge10-overlay-primary">Start</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <aside class="game-sidebar">
+                    <div class="info-card score-card"><span class="info-label">Score</span><p id="merge10-score" class="big-num">0</p><p class="muted-sm">Best: <span id="merge10-best">0</span></p></div>
+                    <div class="info-card"><span class="info-label">Countdown</span><p id="merge10-time" class="big-num">60.0s</p><div class="field-row"><label class="muted-sm" for="merge10-duration">Seconds</label><input id="merge10-duration" class="game-input" type="number" min="10" max="600" step="5" value="60" /></div></div>
+                    <div class="info-card"><span class="info-label">Scoring</span><select id="merge10-score-mode" class="game-select"><option value="cells" selected>Cells removed</option><option value="moves">Successful moves</option></select></div>
+                    <div class="info-card"><button id="merge10-start-btn" class="btn primary full">Start Game</button><button id="merge10-pause-btn" class="btn ghost full" style="margin-top:8px">Pause</button><button id="merge10-new-board-btn" class="btn ghost full" style="margin-top:8px">New Board</button></div>
+                    <div class="info-card"><span class="info-label">Selection</span><p class="muted-sm">Sum: <span id="merge10-selection-sum">0</span> · Cells: <span id="merge10-selection-cells">0</span></p><p class="muted-sm">Moves: <span id="merge10-moves">0</span> · Removed: <span id="merge10-removed">0</span></p></div>
+                </aside>
+            </div>
+        </div>
+    </main>
+
+    <!-- TEN HELPER -->
+    <main id="ten-helper-screen" class="screen">
+        <div class="game-layout">
+            <div class="game-topbar">
+                <button class="back-btn" onclick="switchToMenu()">← Back</button>
+                <div class="game-topbar-title"><h2>合十消除助手</h2><span class="subtitle">Editable 16×10 board, browser solver, and animated playback</span></div>
+                <span id="ten-helper-status" class="topbar-badge">Ready</span>
+            </div>
+            <div class="game-main ten-helper-layout">
+                <section class="ten-helper-panel">
+                    <div class="ten-helper-panel-head">
+                        <h3>Board</h3>
+                        <div class="toolbar compact">
+                            <button id="ten-helper-demo-btn" class="btn sm" type="button">Demo</button>
+                            <button id="ten-helper-random-btn" class="btn sm" type="button">Random</button>
+                            <button id="ten-helper-clear-btn" class="btn sm" type="button">Clear</button>
+                        </div>
+                    </div>
+                    <div class="ten-ocr-card">
+                        <input id="ten-helper-ocr-file" type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" hidden />
+                        <div class="ten-ocr-actions">
+                            <button id="ten-helper-ocr-upload-btn" class="btn sm" type="button">Screenshot</button>
+                            <button id="ten-helper-ocr-auto-btn" class="btn sm" type="button" disabled>Auto Crop</button>
+                            <button id="ten-helper-ocr-run-btn" class="btn sm primary" type="button" disabled>OCR</button>
+                            <label class="checkbox-row ten-ocr-deep"><input id="ten-helper-ocr-deep" type="checkbox" /><span>Deep OCR</span></label>
+                            <span id="ten-helper-ocr-status" class="ten-ocr-status">OCR Ready</span>
+                        </div>
+                        <canvas id="ten-helper-ocr-canvas" class="ten-ocr-canvas" hidden></canvas>
+                    </div>
+                    <div id="ten-helper-grid" class="ten-helper-grid" aria-label="Editable 16 by 10 board"></div>
+                    <div class="ten-helper-controls">
+                        <label><span>Score</span><select id="ten-helper-score-mode" class="game-select"><option value="cells" selected>Cells removed</option><option value="moves">Successful moves</option></select></label>
+                        <label><span>Search</span><input id="ten-helper-time-limit" class="game-input" type="number" min="0.2" max="30" step="0.5" value="2" /></label>
+                        <label><span>Beam</span><input id="ten-helper-beam-width" class="game-input" type="number" min="20" max="2000" step="20" value="300" /></label>
+                    </div>
+                    <button id="ten-helper-solve-btn" class="btn primary full">Solve Board</button>
+                </section>
+                <section class="ten-helper-panel">
+                    <div class="ten-helper-panel-head">
+                        <h3>Playback</h3>
+                        <div class="toolbar compact">
+                            <button id="ten-helper-play-btn" class="btn sm" type="button">Play</button>
+                            <button id="ten-helper-pause-btn" class="btn sm" type="button">Pause</button>
+                            <button id="ten-helper-prev-btn" class="btn sm" type="button">Prev</button>
+                            <button id="ten-helper-next-btn" class="btn sm" type="button">Next</button>
+                        </div>
+                    </div>
+                    <div class="ten-helper-summary">
+                        <span>Step <strong id="ten-helper-step">0 / 0</strong></span>
+                        <span>Score <strong id="ten-helper-score">0</strong></span>
+                        <span>Removed <strong id="ten-helper-removed">0</strong></span>
+                    </div>
+                    <div id="ten-helper-playback-grid" class="ten-helper-grid ten-helper-playback-grid" aria-label="Solver playback board"></div>
+                    <div class="ten-helper-actions">
+                        <button id="ten-helper-copy-btn" class="btn ghost" type="button">Copy</button>
+                        <button id="ten-helper-json-btn" class="btn ghost" type="button">JSON</button>
+                    </div>
+                    <ol id="ten-helper-move-list" class="ten-helper-move-list"></ol>
+                </section>
             </div>
         </div>
     </main>
@@ -539,6 +654,7 @@
 
 <script src="snake.js"></script>
 <script src="2048.js"></script>
+<script src="merge10.js"></script>
 <script src="coin.js"></script>
 <script src="sudoku.js"></script>
 <script src="tetris.js"></script>

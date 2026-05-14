@@ -1,5 +1,5 @@
 // main.js 负责：
-// 1. 统一切换三个 screen（menu / snake / 2048）
+// 1. 统一切换所有 screen（menu / games）
 // 2. 首次进入某个游戏时调用 initSnakeGame / init2048Game
 // 3. 加一点过渡动画（配合 CSS 的 .screen /.screen.active）
 
@@ -17,6 +17,8 @@ function showScreen(idToShow) {
         "menu-screen": "menu",
         "snake-screen": "snake",
         "game2048-screen": "2048",
+        "merge10-screen": "merge10",
+        "ten-helper-screen": "ten-helper",
         "coin-screen": "coin",
         "tetris-screen": "tetris",
         "sudoku-screen": "sudoku",
@@ -82,6 +84,34 @@ function switchTo2048() {
             window.__game2048Initialized = true;
         } else {
             console.error("init2048Game is not defined. Check 2048.js.");
+        }
+    }
+}
+
+function switchToMerge10() {
+    console.log("[main.js] Play Merge 10 clicked");
+    showScreen("merge10-screen");
+
+    if (!window.__merge10GameInitialized) {
+        if (typeof initMerge10Game === "function") {
+            initMerge10Game();
+            window.__merge10GameInitialized = true;
+        } else {
+            console.error("initMerge10Game is not defined. Check merge10.js.");
+        }
+    }
+}
+
+function switchToTenHelper() {
+    console.log("[main.js] Open Ten Helper clicked");
+    showScreen("ten-helper-screen");
+
+    if (!window.__tenHelperInitialized) {
+        if (typeof initTenHelper === "function") {
+            initTenHelper();
+            window.__tenHelperInitialized = true;
+        } else {
+            console.error("initTenHelper is not defined. Check merge10.js.");
         }
     }
 }
@@ -212,6 +242,8 @@ function switchToMenu() {
 
 window.switchToSnake = switchToSnake;
 window.switchTo2048 = switchTo2048;
+window.switchToMerge10 = switchToMerge10;
+window.switchToTenHelper = switchToTenHelper;
 window.switchToCoin = switchToCoin;
 window.switchToTetris = switchToTetris;
 window.switchToSudoku = switchToSudoku;

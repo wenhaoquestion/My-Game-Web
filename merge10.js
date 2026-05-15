@@ -83,6 +83,186 @@
         return demoGrid();
     }
 
+    function shuffleInPlace(items, random = Math.random) {
+        for (let i = items.length - 1; i > 0; i -= 1) {
+            const j = Math.floor(random() * (i + 1));
+            [items[i], items[j]] = [items[j], items[i]];
+        }
+        return items;
+    }
+
+    function weightedChoice(options, random = Math.random) {
+        const total = options.reduce((sum, option) => sum + Math.max(0, option.weight || 1), 0);
+        let cursor = random() * Math.max(total, 1);
+        for (const option of options) {
+            cursor -= Math.max(0, option.weight || 1);
+            if (cursor <= 0) {
+                return option.value;
+            }
+        }
+        return options[options.length - 1]?.value;
+    }
+
+    function partitionSpan(total, minSize, maxSize, random, weightForSize) {
+        const canFinish = new Map();
+        function can(remaining) {
+            if (remaining === 0) return true;
+            if (remaining < minSize) return false;
+            if (canFinish.has(remaining)) return canFinish.get(remaining);
+            for (let size = minSize; size <= Math.min(maxSize, remaining); size += 1) {
+                if (can(remaining - size)) {
+                    canFinish.set(remaining, true);
+                    return true;
+                }
+            }
+            canFinish.set(remaining, false);
+            return false;
+        }
+
+        const parts = [];
+        let remaining = total;
+        while (remaining > 0) {
+            const candidates = [];
+            for (let size = minSize; size <= Math.min(maxSize, remaining); size += 1) {
+                if (can(remaining - size)) {
+                    candidates.push({
+                        value: size,
+                        weight: weightForSize ? weightForSize(size, remaining) : 1,
+                    });
+                }
+            }
+            const picked = weightedChoice(candidates, random);
+            parts.push(picked);
+            remaining -= picked;
+        }
+        return parts;
+    }
+
+    function randomCompositionOfTen(parts, random = Math.random) {
+        const cuts = new Set();
+        while (cuts.size < parts - 1) {
+            cuts.add(1 + Math.floor(random() * 9));
+        }
+        const sorted = Array.from(cuts).sort((a, b) => a - b);
+        const values = [];
+        let prev = 0;
+        sorted.concat(TEN).forEach((cut) => {
+            values.push(cut - prev);
+            prev = cut;
+        });
+        return shuffleInPlace(values, random);
+    }
+
+    function makeClearableMove(rect, indices, values) {
+        return {
+            rect: { ...rect },
+            indices: indices.slice(),
+            values: values.slice(),
+            removedCount: indices.length,
+            area: (rect.r2 - rect.r1 + 1) * (rect.c2 - rect.c1 + 1),
+        };
+    }
+
+    function addClearablePacket(flat, packets, rect, random) {
+        const indices = [];
+        for (let r = rect.r1; r <= rect.r2; r += 1) {
+            for (let c = rect.c1; c <= rect.c2; c += 1) {
+                indices.push(r * COLS + c);
+            }
+        }
+        const values = randomCompositionOfTen(indices.length, random);
+        indices.forEach((index, offset) => {
+            flat[index] = values[offset];
+        });
+        packets.push(makeClearableMove(rect, indices, values));
+    }
+
+    function verifyClearableSolution(flat, moves) {
+        let current = flat.slice();
+        for (const move of moves) {
+            const selection = describeSelection(current, move.rect);
+            if (selection.sum !== TEN || selection.indices.length !== move.indices.length) {
+                return false;
+            }
+            for (let i = 0; i < move.indices.length; i += 1) {
+                if (selection.indices[i] !== move.indices[i]) {
+                    return false;
+                }
+            }
+            current = applyMove(current, selection);
+        }
+        return totalNonZero(current) === 0;
+    }
+
+    function generateClearableGrid(seed) {
+        const random = Number.isFinite(seed) ? mulberry32(seed) : Math.random;
+        const flat = new Array(CELL_COUNT).fill(0);
+        const packets = [];
+        let r = 0;
+
+        while (r < ROWS) {
+            const rowsLeft = ROWS - r;
+            const useRowPair = rowsLeft >= 2 && random() < 0.58;
+            if (useRowPair) {
+                let c = 0;
+                const widths = partitionSpan(COLS, 1, 3, random, (width) => {
+                    if (width === 1) return 2.3;
+                    if (width === 2) return 3.1;
+                    return 1.7;
+                });
+                widths.forEach((width) => {
+                    addClearablePacket(flat, packets, { r1: r, c1: c, r2: r + 1, c2: c + width - 1 }, random);
+                    c += width;
+                });
+                r += 2;
+            } else {
+                let c = 0;
+                const widths = partitionSpan(COLS, 2, 5, random, (width) => {
+                    if (width === 2) return 2.6;
+                    if (width === 3) return 3.2;
+                    if (width === 4) return 1.7;
+                    return 0.9;
+                });
+                widths.forEach((width) => {
+                    addClearablePacket(flat, packets, { r1: r, c1: c, r2: r, c2: c + width - 1 }, random);
+                    c += width;
+                });
+                r += 1;
+            }
+        }
+
+        const moves = packets.slice().reverse();
+        if (!verifyClearableSolution(flat, moves)) {
+            const fallbackFlat = new Array(CELL_COUNT).fill(0);
+            const fallbackPackets = [];
+            for (let row = 0; row < ROWS; row += 1) {
+                let col = 0;
+                [2, 3, 5].forEach((width) => {
+                    addClearablePacket(fallbackFlat, fallbackPackets, { r1: row, c1: col, r2: row, c2: col + width - 1 }, random);
+                    col += width;
+                });
+            }
+            const fallbackMoves = fallbackPackets.slice().reverse();
+            return {
+                grid: flatToGrid(fallbackFlat),
+                solution: serializeSolution(fallbackFlat, fallbackMoves, "cells", {
+                    generator: "clearable-row-fallback",
+                    guarantee: "reverse packet solution clears every filled cell",
+                    solution_moves: fallbackMoves.length,
+                }, false),
+            };
+        }
+
+        return {
+            grid: flatToGrid(flat),
+            solution: serializeSolution(flat, moves, "cells", {
+                generator: "clearable-rect-packets",
+                guarantee: "reverse packet solution clears every filled cell",
+                solution_moves: moves.length,
+            }, false),
+        };
+    }
+
     function demoGrid() {
         const pattern = [
             [1, 9, 2, 8, 3, 7, 4, 6, 5, 5],
@@ -195,6 +375,16 @@
 
     function moveScore(move, scoreMode) {
         return scoreMode === "moves" ? 1 : move.removedCount;
+    }
+
+    function formatElapsed(seconds) {
+        const safe = Math.max(0, Number(seconds) || 0);
+        if (safe < 60) {
+            return `${safe.toFixed(1)}s`;
+        }
+        const minutes = Math.floor(safe / 60);
+        const remainder = safe - minutes * 60;
+        return `${minutes}:${remainder.toFixed(1).padStart(4, "0")}`;
     }
 
     function totalNonZero(flat) {
@@ -874,6 +1064,13 @@
             this.scoreEl = document.getElementById("merge10-score");
             this.bestEl = document.getElementById("merge10-best");
             this.timeEl = document.getElementById("merge10-time");
+            this.scoreLabelEl = document.getElementById("merge10-score-label");
+            this.bestLabelEl = document.getElementById("merge10-best-label");
+            this.modeEl = document.getElementById("merge10-mode");
+            this.modeNoteEl = document.getElementById("merge10-mode-note");
+            this.timerLabelEl = document.getElementById("merge10-timer-label");
+            this.durationRowEl = document.getElementById("merge10-duration-row");
+            this.scoringCardEl = document.getElementById("merge10-scoring-card");
             this.durationEl = document.getElementById("merge10-duration");
             this.scoreModeEl = document.getElementById("merge10-score-mode");
             this.startBtn = document.getElementById("merge10-start-btn");
@@ -888,11 +1085,14 @@
             this.overlayDesc = document.getElementById("merge10-overlay-desc");
             this.overlayPrimary = document.getElementById("merge10-overlay-primary");
 
-            this.flat = gridToFlat(randomPlayableGrid());
+            const initialBoard = this.createBoardForMode();
+            this.flat = gridToFlat(initialBoard.grid);
+            this.clearSolution = initialBoard.solution;
             this.cells = [];
             this.score = 0;
             this.moves = 0;
             this.removed = 0;
+            this.elapsed = 0;
             this.remaining = this.readDuration();
             this.playing = false;
             this.paused = false;
@@ -907,7 +1107,7 @@
         init() {
             this.ensureCells();
             this.attachEvents();
-            this.updateBest();
+            this.updateModeUi();
             this.render();
             this.showOverlay("Ready", "Choose a countdown, then start.", "Start");
         }
@@ -916,11 +1116,35 @@
             return clamp(Number(this.durationEl?.value || 60), 10, 600);
         }
 
+        gameMode() {
+            return this.modeEl?.value === "clear" ? "clear" : "countdown";
+        }
+
+        isClearMode() {
+            return this.gameMode() === "clear";
+        }
+
         scoreMode() {
             return this.scoreModeEl?.value === "moves" ? "moves" : "cells";
         }
 
+        createBoardForMode() {
+            if (this.isClearMode()) {
+                return generateClearableGrid();
+            }
+            return { grid: randomPlayableGrid(), solution: null };
+        }
+
+        loadBoardForMode() {
+            const board = this.createBoardForMode();
+            this.flat = gridToFlat(board.grid);
+            this.clearSolution = board.solution;
+        }
+
         bestKey() {
+            if (this.isClearMode()) {
+                return "merge10_clear_best_ms";
+            }
             return `merge10_best_${this.scoreMode()}_${this.readDuration()}`;
         }
 
@@ -931,6 +1155,16 @@
         }
 
         saveBest() {
+            if (this.isClearMode()) {
+                if (totalNonZero(this.flat) > 0) return;
+                const elapsedMs = Math.max(1, Math.round(this.elapsed * 1000));
+                const best = this.loadBest();
+                if (!best || elapsedMs < best) {
+                    window.localStorage.setItem(this.bestKey(), String(elapsedMs));
+                }
+                this.updateBest();
+                return;
+            }
             const best = this.loadBest();
             if (this.score > best) {
                 window.localStorage.setItem(this.bestKey(), String(this.score));
@@ -940,8 +1174,45 @@
 
         updateBest() {
             if (this.bestEl) {
-                this.bestEl.textContent = String(this.loadBest());
+                const best = this.loadBest();
+                this.bestEl.textContent = this.isClearMode() ? (best ? formatElapsed(best / 1000) : "--") : String(best);
             }
+        }
+
+        updateModeUi() {
+            const clearMode = this.isClearMode();
+            if (this.scoreLabelEl) {
+                this.scoreLabelEl.textContent = clearMode ? "Cleared" : "Score";
+            }
+            if (this.bestLabelEl) {
+                this.bestLabelEl.textContent = clearMode ? "Best Time" : "Best";
+            }
+            if (this.timerLabelEl) {
+                this.timerLabelEl.textContent = clearMode ? "Elapsed" : "Countdown";
+            }
+            if (this.durationRowEl) {
+                this.durationRowEl.hidden = clearMode;
+                this.durationRowEl.style.display = clearMode ? "none" : "";
+            }
+            if (this.scoringCardEl) {
+                this.scoringCardEl.hidden = clearMode;
+                this.scoringCardEl.style.display = clearMode ? "none" : "";
+            }
+            if (this.scoreModeEl) {
+                this.scoreModeEl.disabled = clearMode;
+            }
+            if (this.modeNoteEl) {
+                this.modeNoteEl.textContent = clearMode
+                    ? "A separate generator creates a board with a hidden full-clear route."
+                    : "Random playable board with a custom countdown.";
+            }
+            if (this.startBtn) {
+                this.startBtn.textContent = clearMode ? "Start Clear" : "Start Game";
+            }
+            if (this.newBoardBtn) {
+                this.newBoardBtn.textContent = clearMode ? "New Clear Board" : "New Board";
+            }
+            this.updateBest();
         }
 
         ensureCells() {
@@ -968,31 +1239,35 @@
             this.startBtn.addEventListener("click", () => this.startGame(true));
             this.pauseBtn.addEventListener("click", () => this.togglePause());
             this.newBoardBtn.addEventListener("click", () => this.resetBoard(false));
+            this.modeEl.addEventListener("change", () => this.resetBoard(true));
             this.durationEl.addEventListener("input", () => {
                 if (!this.playing) {
                     this.remaining = this.readDuration();
-                    this.updateBest();
+                    this.updateModeUi();
                     this.renderStats();
                 }
             });
             this.scoreModeEl.addEventListener("change", () => {
                 if (!this.playing) {
-                    this.updateBest();
+                    this.updateModeUi();
                 }
             });
         }
 
         startGame(newBoard) {
             if (newBoard) {
-                this.flat = gridToFlat(randomPlayableGrid());
+                this.loadBoardForMode();
             }
+            this.stopLoop();
             this.score = 0;
             this.moves = 0;
             this.removed = 0;
+            this.elapsed = 0;
             this.remaining = this.readDuration();
             this.playing = true;
             this.paused = false;
             this.lastFrame = null;
+            this.updateModeUi();
             this.hideOverlay();
             this.clearSelection();
             this.render();
@@ -1000,19 +1275,29 @@
         }
 
         resetBoard(showReady = true) {
-            this.flat = gridToFlat(randomPlayableGrid());
+            this.stopLoop();
+            this.loadBoardForMode();
             this.score = 0;
             this.moves = 0;
             this.removed = 0;
+            this.elapsed = 0;
             this.remaining = this.readDuration();
             this.playing = false;
             this.paused = false;
             this.clearSelection();
+            this.updateModeUi();
             this.render();
             if (showReady) {
-                this.showOverlay("Ready", "Fresh board loaded.", "Start");
+                this.showOverlay("Ready", this.isClearMode() ? "Clear every tile as fast as you can." : "Fresh board loaded.", this.isClearMode() ? "Start Clear" : "Start");
             } else {
-                this.showOverlay("New Board", "Fresh board loaded.", "Start");
+                this.showOverlay("New Board", this.isClearMode() ? "Generated with a guaranteed full-clear route." : "Fresh board loaded.", this.isClearMode() ? "Start Clear" : "Start");
+            }
+        }
+
+        stopLoop() {
+            if (this.rafId) {
+                window.cancelAnimationFrame(this.rafId);
+                this.rafId = null;
             }
         }
 
@@ -1033,6 +1318,11 @@
                 this.renderStats();
                 return;
             }
+            if (this.isClearMode()) {
+                this.elapsed += dt;
+                this.renderStats();
+                return;
+            }
             this.remaining = Math.max(0, this.remaining - dt);
             if (this.remaining <= 0) {
                 this.endGame("Time Up");
@@ -1049,13 +1339,14 @@
         endGame(title) {
             this.playing = false;
             this.paused = false;
-            if (this.rafId) {
-                window.cancelAnimationFrame(this.rafId);
-                this.rafId = null;
-            }
+            this.stopLoop();
             this.saveBest();
             this.renderStats();
-            this.showOverlay(title, `Score ${this.score} · Moves ${this.moves} · Removed ${this.removed}`, "Play Again");
+            this.statusEl.textContent = title;
+            const desc = this.isClearMode()
+                ? `${totalNonZero(this.flat) ? "Stuck" : "Cleared"} in ${formatElapsed(this.elapsed)} · Moves ${this.moves} · Removed ${this.removed}/${CELL_COUNT}`
+                : `Score ${this.score} · Moves ${this.moves} · Removed ${this.removed}`;
+            this.showOverlay(title, desc, this.isClearMode() ? "New Clear Board" : "Play Again");
         }
 
         togglePause() {
@@ -1064,7 +1355,8 @@
             this.statusEl.textContent = this.paused ? "Paused" : "Playing";
             this.pauseBtn.textContent = this.paused ? "Resume" : "Pause";
             if (this.paused) {
-                this.showOverlay("Paused", `Score ${this.score}`, "Resume");
+                const desc = this.isClearMode() ? `Time ${formatElapsed(this.elapsed)}` : `Score ${this.score}`;
+                this.showOverlay("Paused", desc, "Resume");
                 this.overlayPrimary.onclick = () => {
                     this.paused = false;
                     this.pauseBtn.textContent = "Pause";
@@ -1140,8 +1432,11 @@
                 this.statusEl.textContent = `+${delta}`;
                 this.clearSelection();
                 this.render();
-                if (!generateMoves(this.flat).length) {
-                    this.endGame("No Moves Left");
+                const cellsLeft = totalNonZero(this.flat);
+                if (this.isClearMode() && cellsLeft === 0) {
+                    this.endGame("Cleared");
+                } else if (!generateMoves(this.flat).length) {
+                    this.endGame(this.isClearMode() ? "No Route Left" : "No Moves Left");
                 }
             } else {
                 this.selectionState = "invalid";
@@ -1168,8 +1463,9 @@
         }
 
         renderStats() {
-            this.scoreEl.textContent = String(this.score);
-            this.timeEl.textContent = `${this.remaining.toFixed(1)}s`;
+            const clearMode = this.isClearMode();
+            this.scoreEl.textContent = clearMode ? `${this.removed}/${CELL_COUNT}` : String(this.score);
+            this.timeEl.textContent = clearMode ? formatElapsed(this.elapsed) : `${this.remaining.toFixed(1)}s`;
             this.movesEl.textContent = String(this.moves);
             this.removedEl.textContent = String(this.removed);
             this.pauseBtn.textContent = this.paused ? "Resume" : "Pause";
@@ -1203,12 +1499,21 @@
         toText() {
             return {
                 game: "merge10",
+                mode: this.gameMode(),
                 status: this.playing ? (this.paused ? "paused" : "playing") : "ready",
                 score: this.score,
                 scoreMode: this.scoreMode(),
+                elapsed: Number(this.elapsed.toFixed(2)),
                 remaining: Number(this.remaining.toFixed(2)),
                 moves: this.moves,
                 removed: this.removed,
+                cellsLeft: totalNonZero(this.flat),
+                clearable: this.isClearMode() ? {
+                    guaranteed: true,
+                    verified: this.clearSolution?.total_removed_cells === CELL_COUNT,
+                    solutionMoves: this.clearSolution?.total_moves || 0,
+                    totalCells: CELL_COUNT,
+                } : null,
                 selection: this.currentSelection(),
                 board: flatToGrid(this.flat),
                 coordinateSystem: "rows and columns are zero-based; r increases downward, c increases rightward",

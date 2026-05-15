@@ -12,3 +12,12 @@ Progress:
 
 TODO:
 - Optional future improvement: tune the dark-theme screenshot classifier further, or add a small local/offline OCR model bundle so Deep OCR does not need to load Tesseract.js from CDN.
+
+Current request:
+- Add a Merge 10 mode that uses an independent generator to create boards with a guaranteed full-clear route, then times how long the player takes to clear everything.
+
+Progress on current request:
+- Added Merge 10 mode UI for Countdown Score vs Clear Race.
+- Added an independent clearable board generator that builds the board from rectangular packets whose values sum to 10, stores the reverse solution, and verifies the hidden route clears every cell.
+- Wired Clear Race to count elapsed time upward, finish on a fully empty board, and store best time separately from countdown score records.
+- Verified with `node --check merge10.js`, the project `web_game_playwright_client` smoke run, and a Playwright Clear Race interaction: generated board reported `guaranteed` + `verified`, elapsed time advanced, a valid move removed cells, and no console errors were emitted.

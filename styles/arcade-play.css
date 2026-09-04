@@ -1,0 +1,117 @@
+/* Focused play surfaces for the arcade games. */
+#snake-screen .arcade-play-layout { grid-template-columns: minmax(0, 680px) minmax(240px, 290px); align-items: start; gap: 26px; }
+#snake-screen .game-layout { max-width: 1100px; }
+.snake-play-stage { min-width: 0; }
+.play-scorebar { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; padding: 0 3px 18px; }
+.play-scorebar > div { display: grid; gap: 5px; }
+.play-scorebar > div:not(:first-child) { text-align: right; }
+.play-scorebar span { color: var(--text-muted, #9fa6a1); font-size: .72rem; letter-spacing: .07em; text-transform: uppercase; }
+.play-scorebar strong { font-size: clamp(1.2rem, 3vw, 1.8rem); font-weight: 650; line-height: 1; font-variant-numeric: tabular-nums; }
+.play-scorebar > div:first-child strong { color: var(--accent, #dcff7d); }
+.snake-board-wrap { position: relative; overflow: hidden; border: 1px solid #344039; border-radius: 17px; background: #101714; }
+#snake-canvas { width: 100%; height: auto; display: block; border: 0; border-radius: 0; touch-action: none; }
+.snake-play-overlay { position: absolute; inset: 0; display: grid; align-items: center; justify-items: center; padding: 28px; background: rgba(9, 16, 12, .68); backdrop-filter: blur(3px); }
+.snake-play-overlay[hidden] { display: none; }
+.snake-overlay-card { max-width: 370px; text-align: center; }
+.play-eyebrow { color: var(--accent, #dcff7d); font-size: .7rem; font-weight: 650; letter-spacing: .12em; text-transform: uppercase; }
+.snake-overlay-card h3 { color: #f7f8f3; font-size: clamp(1.55rem, 4.5vw, 2.5rem); letter-spacing: -.045em; line-height: 1.1; margin: 13px 0; }
+.snake-overlay-card > p { color: #bec8bf; font-size: .92rem; line-height: 1.65; margin: 0 auto 20px; max-width: 320px; }
+.play-button-row { display: flex; flex-wrap: wrap; gap: 9px; }
+.snake-overlay-card .play-button-row { justify-content: center; margin-bottom: 15px; }
+.play-key-hint { display: block; color: #929f94; font-size: .73rem; line-height: 1.6; }
+.play-button-row .btn { min-height: 42px; }
+.snake-play-overlay.is-countdown { background: rgba(9, 16, 12, .35); backdrop-filter: none; pointer-events: none; }
+.snake-play-overlay.is-countdown h3 { font-size: 5rem; font-variant-numeric: tabular-nums; margin: 4px 0; }
+.snake-result-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 15px 0 22px; }
+.snake-result-stats[hidden] { display: none; }
+.snake-result-stats > div { display: grid; gap: 5px; }
+.snake-result-stats strong { color: var(--accent, #dcff7d); font-size: 1.65rem; line-height: 1; }
+.snake-result-stats span { color: #a6b2a8; font-size: .72rem; }
+.snake-feedback { position: absolute; top: 14px; left: 50%; z-index: 1; transform: translate(-50%, -8px); opacity: 0; pointer-events: none; width: max-content; max-width: calc(100% - 24px); margin: 0; padding: 8px 14px; border-radius: 999px; color: #e6f5dd; background: rgba(22, 40, 29, .92); border: 1px solid #445c44; font-size: .79rem; transition: opacity .18s, transform .18s; text-align: center; }
+.snake-feedback.visible { opacity: 1; transform: translate(-50%, 0); }
+.snake-goal-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding-top: 16px; font-size: .76rem; }
+.snake-goal-row > div { display: flex; align-items: baseline; gap: 10px; }
+.snake-goal-row > span { color: #909d93; font-size: .69rem; }
+.snake-goal-row strong { color: #cad6c9; font-weight: 500; }
+.snake-goal-track { height: 4px; border-radius: 4px; background: #27322b; overflow: hidden; margin-top: 9px; }
+.snake-goal-track > span { display: block; height: 100%; width: 0; background: var(--accent, #dcff7d); transition: width .2s; }
+.snake-input-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding-top: 19px; }
+.snake-input-row .play-key-hint { text-align: right; }
+.snake-dpad { display: grid; grid-template-columns: repeat(3, 45px); grid-template-rows: repeat(2, 40px); gap: 5px; }
+.snake-dpad button { border: 1px solid #39483d; background: #1b241e; color: #dce9da; border-radius: 9px; font-size: 1.3rem; cursor: pointer; touch-action: manipulation; padding: 0; }
+.snake-dpad button[data-snake-direction="up"] { grid-column: 2; }
+.snake-dpad button[data-snake-direction="left"] { grid-column: 1; grid-row: 2; }
+.snake-dpad button[data-snake-direction="down"] { grid-column: 2; grid-row: 2; }
+.snake-dpad button[data-snake-direction="right"] { grid-column: 3; grid-row: 2; }
+.snake-dpad button:active { color: #122015; background: var(--accent, #dcff7d); transform: translateY(1px); }
+#snake-screen .snake-settings .info-card { padding: 20px; }
+#snake-screen .snake-settings .info-card:last-child { display: block; }
+.snake-settings .game-select { width: 100%; margin-bottom: 16px; }
+.snake-settings .game-select:last-child { margin-bottom: 0; }
+.snake-settings .info-label { display: block; margin-bottom: 9px; }
+.snake-settings .muted-sm { margin: 13px 0 0; line-height: 1.65; color: #97a199; }
+.snake-settings .game-select:disabled { opacity: .55; cursor: not-allowed; }
+.snake-field-guide > p:not(.muted-sm) { display: flex; align-items: center; gap: 10px; margin: 12px 0; color: #c5cec6; font-size: .82rem; }
+.snake-field-guide p > span { display: flex; flex: 1; justify-content: space-between; gap: 10px; }
+.snake-field-guide strong { font-size: .74rem; font-weight: 500; color: #a1b099; }
+.snake-guide-dot { width: 12px; height: 12px; border-radius: 4px; flex-shrink: 0; }
+.snake-guide-dot.fruit { background: #ef7375; }
+.snake-guide-dot.gold { background: #ffd852; }
+.snake-guide-dot.slow { background: linear-gradient(90deg, #74cffa 50%, #f6a66c 50%); }
+@media (max-width: 760px) {
+    #snake-screen .arcade-play-layout { grid-template-columns: minmax(0, 1fr); gap: 25px; }
+    .snake-play-stage { width: 100%; max-width: 600px; justify-self: center; }
+    .snake-settings { width: 100%; }
+    .snake-play-overlay { padding: 20px; }
+    .snake-overlay-card > p { font-size: .8rem; line-height: 1.55; margin-bottom: 14px; }
+    .snake-overlay-card .play-key-hint { font-size: .66rem; }
+    .play-scorebar { padding-bottom: 15px; }
+    .snake-dpad { grid-template-columns: repeat(3, 49px); grid-template-rows: repeat(2, 44px); }
+    .snake-goal-row > span { max-width: 95px; text-align: right; }
+    .snake-goal-row > div { gap: 6px; }
+    .snake-input-row { gap: 14px; }
+}
+@media (max-width: 380px) {
+    .snake-play-overlay { padding: 13px; }
+    .snake-overlay-card h3 { margin: 8px 0; }
+    .snake-overlay-card > p { font-size: .76rem; margin-bottom: 10px; }
+    .snake-overlay-card .play-key-hint { display: none; }
+    .snake-result-stats { padding: 5px 0 12px; }
+    .snake-result-stats strong { font-size: 1.35rem; }
+    .snake-overlay-card .play-button-row { margin-bottom: 0; }
+    .snake-dpad { grid-template-columns: repeat(3, 44px); }
+    .snake-input-row .play-key-hint { font-size: .65rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .snake-feedback, .snake-goal-track > span { transition: none; }
+}
+/* Shooter: keep flight information and touch actions next to the battlefield. */
+.shooter-play-area { width: min(100%, 430px); justify-self: center; min-width: 0; }
+.shooter-play-area .shooter-board-wrap { width: 100%; }
+#shooter-canvas { touch-action: none; cursor: grab; }
+#shooter-canvas:active { cursor: grabbing; }
+#shooter-canvas:focus-visible { outline: 2px solid #c9e88c; outline-offset: -3px; }
+.shooter-flight-hud { display: flex; justify-content: space-between; gap: 8px; padding: 0 2px 10px; font-size: 11px; color: var(--game-muted, #aeb7ae); }
+.shooter-flight-hud strong { display: block; margin-top: 3px; font-size: 16px; color: var(--game-text, #f0f2eb); font-variant-numeric: tabular-nums; }
+.shooter-flight-hud > :last-child { text-align: right; }
+.shooter-flight-message { min-height: 2.7em; margin: 10px 0 7px; color: var(--game-text, #f0f2eb); font-size: 12px; line-height: 1.4; }
+.shooter-flight-controls { display: grid; grid-template-columns: 42px 42px minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr); gap: 6px; }
+.game-layout .shooter-flight-controls .btn { min-height: 44px; min-width: 0; padding: 8px 4px; font-size: 11px; touch-action: none; user-select: none; -webkit-user-select: none; }
+.game-layout .shooter-flight-controls .btn[aria-pressed="true"] { color: #d4edac; border-color: #667951; background: #293426; }
+.game-layout .shooter-flight-controls .btn:disabled { opacity: .5; cursor: not-allowed; }
+.shooter-control-help { margin: 10px 0 0; font-size: 11px; line-height: 1.65; }
+.shooter-result-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px; margin: 18px 0; text-align: left; }
+.shooter-result-stats[hidden] { display: none; }
+.shooter-result-stats span { display: block; color: #aeb7ae; font-size: 11px; }
+.shooter-result-stats strong { display: block; margin-top: 3px; color: #f0f2eb; font-size: 17px; font-variant-numeric: tabular-nums; }
+@media (max-width: 600px) {
+    .shooter-play-area { width: min(100%, 340px); }
+    .shooter-flight-hud { padding-bottom: 7px; }
+    .shooter-flight-hud strong { font-size: 14px; }
+    .shooter-flight-controls { grid-template-columns: 36px 36px minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr); gap: 4px; }
+    #shooter-screen .shooter-overlay { padding: 10px; }
+    #shooter-screen .shooter-overlay .overlay-card { padding: 18px 14px; }
+    #shooter-screen .shooter-overlay .overlay-desc { font-size: 12px; line-height: 1.55; }
+    #shooter-screen .shooter-overlay .overlay-title { font-size: 24px; }
+    #shooter-screen .shooter-overlay .overlay-actions { gap: 6px; }
+}

@@ -1084,10 +1084,23 @@
             this.overlayTitle = document.getElementById("merge10-overlay-title");
             this.overlayDesc = document.getElementById("merge10-overlay-desc");
             this.overlayPrimary = document.getElementById("merge10-overlay-primary");
+            this.hintBtn = document.getElementById("merge10-hint-btn");
+            this.undoBtn = document.getElementById("merge10-undo-btn");
+            this.feedbackEl = document.getElementById("merge10-feedback");
+            this.availableEl = document.getElementById("merge10-available");
+            this.selectionReadoutEl = document.getElementById("merge10-selection-readout");
+            this.history = [];
+            this.hintMove = null;
+            this.assisted = false;
+            this.hintsUsed = 0;
+            this.started = false;
+            this.endReason = null;
+            this.keyboardSelecting = false;
 
             const initialBoard = this.createBoardForMode();
             this.flat = gridToFlat(initialBoard.grid);
             this.clearSolution = initialBoard.solution;
+            this.availableMoves = generateMoves(this.flat);
             this.cells = [];
             this.score = 0;
             this.moves = 0;
@@ -1139,6 +1152,7 @@
             const board = this.createBoardForMode();
             this.flat = gridToFlat(board.grid);
             this.clearSolution = board.solution;
+            this.availableMoves = generateMoves(this.flat);
         }
 
         bestKey() {
@@ -1149,25 +1163,33 @@
         }
 
         loadBest() {
-            const raw = window.localStorage.getItem(this.bestKey());
-            const value = Number(raw);
-            return Number.isFinite(value) ? value : 0;
+            try {
+                const value = Number(window.localStorage.getItem(this.bestKey()));
+                return Number.isFinite(value) ? value : 0;
+            } catch { return this.sessionBest?.[this.bestKey()] || 0; }
+        }
+
+        storeBest(value) {
+            this.sessionBest ??= {};
+            this.sessionBest[this.bestKey()] = value;
+            try { window.localStorage.setItem(this.bestKey(), String(value)); } catch { /* Keep the session record. */ }
         }
 
         saveBest() {
+            if (this.assisted) return;
             if (this.isClearMode()) {
                 if (totalNonZero(this.flat) > 0) return;
                 const elapsedMs = Math.max(1, Math.round(this.elapsed * 1000));
                 const best = this.loadBest();
                 if (!best || elapsedMs < best) {
-                    window.localStorage.setItem(this.bestKey(), String(elapsedMs));
+                    this.storeBest(elapsedMs);
                 }
                 this.updateBest();
                 return;
             }
             const best = this.loadBest();
             if (this.score > best) {
-                window.localStorage.setItem(this.bestKey(), String(this.score));
+                this.storeBest(this.score);
             }
             this.updateBest();
         }
@@ -1199,15 +1221,16 @@
                 this.scoringCardEl.style.display = clearMode ? "none" : "";
             }
             if (this.scoreModeEl) {
-                this.scoreModeEl.disabled = clearMode;
+                this.scoreModeEl.disabled = clearMode || this.playing;
             }
+            if (this.durationEl) this.durationEl.disabled = this.playing;
             if (this.modeNoteEl) {
                 this.modeNoteEl.textContent = clearMode
-                    ? "A separate generator creates a board with a hidden full-clear route."
+                    ? "Every starting board can be fully cleared. Plan your route and beat your time."
                     : "Random playable board with a custom countdown.";
             }
             if (this.startBtn) {
-                this.startBtn.textContent = clearMode ? "Start Clear" : "Start Game";
+                this.startBtn.textContent = this.playing ? "Restart run" : clearMode ? "Start Clear" : "Start Game";
             }
             if (this.newBoardBtn) {
                 this.newBoardBtn.textContent = clearMode ? "New Clear Board" : "New Board";
@@ -1224,6 +1247,7 @@
                 cell.type = "button";
                 cell.className = "merge10-cell";
                 cell.dataset.index = String(index);
+                cell.tabIndex = index === 0 ? 0 : -1;
                 cell.ariaLabel = `R${Math.floor(index / COLS) + 1}C${index % COLS + 1}`;
                 fragment.appendChild(cell);
                 this.cells.push(cell);
@@ -1232,11 +1256,24 @@
         }
 
         attachEvents() {
+            const suspend = () => {
+                if ((!document.getElementById("merge10-screen")?.classList.contains("active") || document.hidden) && this.playing && !this.paused) {
+                    this.togglePause();
+                }
+            };
+            document.addEventListener("arcade:screenchange", suspend);
+            document.addEventListener("visibilitychange", suspend);
+            document.addEventListener("arcade:pause", () => {
+                if (this.playing && !this.paused) this.togglePause();
+            });
             this.boardEl.addEventListener("pointerdown", (event) => this.handlePointerDown(event));
             this.boardEl.addEventListener("pointermove", (event) => this.handlePointerMove(event));
             this.boardEl.addEventListener("pointerup", (event) => this.handlePointerUp(event));
             this.boardEl.addEventListener("pointercancel", () => this.clearSelection());
-            this.startBtn.addEventListener("click", () => this.startGame(true));
+            this.boardEl.addEventListener("keydown", event => this.handleBoardKey(event));
+            this.hintBtn?.addEventListener("click", () => this.showHint());
+            this.undoBtn?.addEventListener("click", () => this.undo());
+            this.startBtn.addEventListener("click", () => this.startGame(this.started));
             this.pauseBtn.addEventListener("click", () => this.togglePause());
             this.newBoardBtn.addEventListener("click", () => this.resetBoard(false));
             this.modeEl.addEventListener("change", () => this.resetBoard(true));
@@ -1259,6 +1296,12 @@
                 this.loadBoardForMode();
             }
             this.stopLoop();
+            this.history = [];
+            this.hintMove = null;
+            this.assisted = false;
+            this.hintsUsed = 0;
+            this.started = true;
+            this.endReason = null;
             this.score = 0;
             this.moves = 0;
             this.removed = 0;
@@ -1271,12 +1314,19 @@
             this.hideOverlay();
             this.clearSelection();
             this.render();
+            this.setFeedback("Drag a rectangle that adds to 10, or mark its corners with Enter.");
             this.loop();
         }
 
         resetBoard(showReady = true) {
             this.stopLoop();
             this.loadBoardForMode();
+            this.history = [];
+            this.hintMove = null;
+            this.assisted = false;
+            this.hintsUsed = 0;
+            this.started = false;
+            this.endReason = null;
             this.score = 0;
             this.moves = 0;
             this.removed = 0;
@@ -1287,6 +1337,7 @@
             this.clearSelection();
             this.updateModeUi();
             this.render();
+            this.setFeedback("This is your next board. Start when you are ready.");
             if (showReady) {
                 this.showOverlay("Ready", this.isClearMode() ? "Clear every tile as fast as you can." : "Fresh board loaded.", this.isClearMode() ? "Start Clear" : "Start");
             } else {
@@ -1302,7 +1353,7 @@
         }
 
         loop(timestamp) {
-            if (!this.playing) return;
+            if (!this.playing || this.paused) return;
             if (this.rafId) window.cancelAnimationFrame(this.rafId);
             this.rafId = window.requestAnimationFrame((nextTimestamp) => {
                 if (this.lastFrame === null) this.lastFrame = nextTimestamp;
@@ -1337,15 +1388,20 @@
         }
 
         endGame(title) {
+            this.endReason = title;
             this.playing = false;
             this.paused = false;
             this.stopLoop();
             this.saveBest();
             this.renderStats();
+            this.updateModeUi();
             this.statusEl.textContent = title;
-            const desc = this.isClearMode()
+            let desc = this.isClearMode()
                 ? `${totalNonZero(this.flat) ? "Stuck" : "Cleared"} in ${formatElapsed(this.elapsed)} · Moves ${this.moves} · Removed ${this.removed}/${CELL_COUNT}`
                 : `Score ${this.score} · Moves ${this.moves} · Removed ${this.removed}`;
+            if (title.includes("No ")) desc += ". No rectangles remain. Undo the last move to try another route.";
+            if (this.assisted) desc += ". Assisted run — personal best unchanged.";
+            this.setFeedback(desc, title === "Cleared" ? "success" : "warning");
             this.showOverlay(title, desc, this.isClearMode() ? "New Clear Board" : "Play Again");
         }
 
@@ -1355,15 +1411,15 @@
             this.statusEl.textContent = this.paused ? "Paused" : "Playing";
             this.pauseBtn.textContent = this.paused ? "Resume" : "Pause";
             if (this.paused) {
+                this.stopLoop();
+                this.clearSelection();
                 const desc = this.isClearMode() ? `Time ${formatElapsed(this.elapsed)}` : `Score ${this.score}`;
                 this.showOverlay("Paused", desc, "Resume");
-                this.overlayPrimary.onclick = () => {
-                    this.paused = false;
-                    this.pauseBtn.textContent = "Pause";
-                    this.hideOverlay();
-                };
+                this.overlayPrimary.onclick = () => this.togglePause();
             } else {
+                this.lastFrame = null;
                 this.hideOverlay();
+                this.loop();
             }
         }
 
@@ -1372,7 +1428,7 @@
             this.overlayTitle.textContent = title;
             this.overlayDesc.textContent = desc;
             this.overlayPrimary.textContent = buttonText;
-            this.overlayPrimary.onclick = () => this.startGame(true);
+            this.overlayPrimary.onclick = () => this.startGame(this.started);
             this.overlay.classList.add("visible");
         }
 
@@ -1395,6 +1451,9 @@
             const cell = this.cellFromEvent(event);
             if (!cell) return;
             event.preventDefault();
+            clearTimeout(this.selectionTimer);
+            this.hintMove = null;
+            this.keyboardSelecting = false;
             this.pointerDown = true;
             this.selectionStart = cell;
             this.selectionEnd = cell;
@@ -1421,7 +1480,14 @@
             }
             const selection = this.currentSelection();
             this.pointerDown = false;
+            this.commitSelection(selection);
+        }
+
+        commitSelection(selection) {
             if (selection.sum === TEN && selection.count > 0) {
+                this.history.push({ flat: this.flat.slice(), score: this.score, moves: this.moves, removed: this.removed });
+                if (this.history.length > 100) this.history.shift();
+                this.hintMove = null;
                 selection.indices.forEach((index) => {
                     this.flat[index] = 0;
                 });
@@ -1429,21 +1495,100 @@
                 this.score += delta;
                 this.moves += 1;
                 this.removed += selection.count;
+                this.availableMoves = generateMoves(this.flat);
                 this.statusEl.textContent = `+${delta}`;
                 this.clearSelection();
                 this.render();
+                this.setFeedback(`Removed ${selection.count} cells. ${this.availableMoves.length} valid rectangles remain.`, "success");
+                window.ArcadeFeedback?.play("score");
                 const cellsLeft = totalNonZero(this.flat);
                 if (this.isClearMode() && cellsLeft === 0) {
                     this.endGame("Cleared");
-                } else if (!generateMoves(this.flat).length) {
+                } else if (!this.availableMoves.length) {
                     this.endGame(this.isClearMode() ? "No Route Left" : "No Moves Left");
                 }
             } else {
                 this.selectionState = "invalid";
                 this.statusEl.textContent = `Sum ${selection.sum}`;
+                this.setFeedback(selection.sum > TEN ? `Sum ${selection.sum}: remove ${selection.sum - TEN} from your selection.` : `Sum ${selection.sum}: add ${TEN - selection.sum} more.`, "warning");
                 this.render();
-                window.setTimeout(() => this.clearSelection(), 280);
+                clearTimeout(this.selectionTimer);
+                this.selectionTimer = window.setTimeout(() => this.clearSelection(), 500);
             }
+        }
+
+        setFeedback(text, tone = "") {
+            if (!this.feedbackEl) return;
+            this.feedbackEl.textContent = text;
+            this.feedbackEl.dataset.tone = tone;
+        }
+
+        showHint() {
+            if (!this.playing || this.paused || !this.availableMoves.length) return;
+            this.clearSelection();
+            this.assisted = true;
+            this.hintsUsed++;
+            this.hintMove = this.availableMoves.slice().sort((a, b) => a.area - b.area || b.removedCount - a.removedCount)[0];
+            const { r1, c1, r2, c2 } = this.hintMove.rect;
+            this.setFeedback(`Try row ${r1 + 1}, column ${c1 + 1} to row ${r2 + 1}, column ${c2 + 1}. Highlighted numbers total 10.`, "success");
+            this.render();
+        }
+
+        undo() {
+            if (!this.history.length || this.paused || this.endReason === "Time Up" || this.endReason === "Cleared") return;
+            const previous = this.history.pop();
+            this.flat = previous.flat;
+            this.score = previous.score;
+            this.moves = previous.moves;
+            this.removed = previous.removed;
+            this.availableMoves = generateMoves(this.flat);
+            this.assisted = true;
+            this.hintMove = null;
+            this.endReason = null;
+            this.playing = true;
+            this.lastFrame = null;
+            this.hideOverlay();
+            this.clearSelection();
+            this.updateModeUi();
+            this.setFeedback("Move undone. The clock keeps its current time. Continue exploring this board.");
+            this.loop();
+        }
+
+        handleBoardKey(event) {
+            if (!this.playing || this.paused || document.hidden) return;
+            const cell = event.target.closest(".merge10-cell");
+            if (!cell) return;
+            let index = Number(cell.dataset.index);
+            const delta = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -COLS, ArrowDown: COLS }[event.key];
+            if (delta) {
+                event.preventDefault();
+                index = clamp(index + delta, 0, CELL_COUNT - 1);
+                this.cells.forEach(item => { item.tabIndex = -1; });
+                this.cells[index].tabIndex = 0;
+                this.cells[index].focus({ preventScroll: true });
+                if (this.keyboardSelecting) {
+                    this.selectionEnd = { r: Math.floor(index / COLS), c: index % COLS };
+                    this.selectionState = this.currentSelection().sum === TEN ? "valid" : "neutral";
+                    this.render();
+                }
+            } else if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                if (event.repeat) return;
+                clearTimeout(this.selectionTimer);
+                const point = { r: Math.floor(index / COLS), c: index % COLS };
+                if (!this.keyboardSelecting) {
+                    this.hintMove = null;
+                    this.keyboardSelecting = true;
+                    this.selectionStart = point;
+                    this.selectionEnd = point;
+                    this.setFeedback("First corner marked. Move with arrows and press Enter to remove the rectangle.");
+                    this.render();
+                } else {
+                    this.selectionEnd = point;
+                    this.keyboardSelecting = false;
+                    this.commitSelection(this.currentSelection());
+                }
+            } else if (event.key === "Escape") { event.preventDefault(); this.clearSelection(); }
         }
 
         currentSelection() {
@@ -1455,6 +1600,8 @@
         }
 
         clearSelection() {
+            clearTimeout(this.selectionTimer);
+            this.keyboardSelecting = false;
             this.pointerDown = false;
             this.selectionStart = null;
             this.selectionEnd = null;
@@ -1470,8 +1617,11 @@
             this.removedEl.textContent = String(this.removed);
             this.pauseBtn.textContent = this.paused ? "Resume" : "Pause";
             this.pauseBtn.disabled = !this.playing;
-            if (!this.playing && this.statusEl.textContent !== "Ready") {
-                this.statusEl.textContent = "Ready";
+            if (this.hintBtn) this.hintBtn.disabled = !this.playing || this.paused || !this.availableMoves.length;
+            if (this.undoBtn) this.undoBtn.disabled = !this.history.length || this.paused || this.endReason === "Time Up" || this.endReason === "Cleared";
+            if (this.availableEl) this.availableEl.textContent = `${this.availableMoves.length} rectangles${this.assisted ? " · Assisted run · best records off" : " · Unassisted"}`;
+            if (!this.playing) {
+                this.statusEl.textContent = this.endReason || "Ready";
             } else if (this.playing && !this.paused && !this.pointerDown) {
                 this.statusEl.textContent = "Playing";
             }
@@ -1485,6 +1635,9 @@
                 const value = this.flat[index];
                 cell.textContent = value ? String(value) : "";
                 cell.className = value ? "merge10-cell" : "merge10-cell empty";
+                cell.setAttribute("aria-label", `Row ${Math.floor(index / COLS) + 1}, column ${index % COLS + 1}: ${value || "empty"}`);
+                if (this.hintMove?.indices.includes(index)) cell.classList.add("hint-cell");
+                if (this.keyboardSelecting && this.selectionStart.r * COLS + this.selectionStart.c === index) cell.classList.add("keyboard-anchor");
                 if (selected.has(index)) {
                     cell.classList.add("selected");
                     if (this.selectionState === "valid") cell.classList.add("valid");
@@ -1493,6 +1646,11 @@
             });
             this.selectionSumEl.textContent = String(selection.sum);
             this.selectionCellsEl.textContent = String(selection.count);
+            if (this.selectionReadoutEl) {
+                this.selectionReadoutEl.hidden = !selection.rect;
+                this.selectionReadoutEl.textContent = `Sum ${selection.sum} / 10 · ${selection.count} cells${selection.sum === TEN ? " · Ready to clear" : ""}`;
+                this.selectionReadoutEl.dataset.valid = String(selection.sum === TEN);
+            }
             this.renderStats();
         }
 
@@ -1500,7 +1658,12 @@
             return {
                 game: "merge10",
                 mode: this.gameMode(),
-                status: this.playing ? (this.paused ? "paused" : "playing") : "ready",
+                status: this.playing ? (this.paused ? "paused" : "playing") : this.endReason || "ready",
+                assisted: this.assisted,
+                hintsUsed: this.hintsUsed,
+                hint: this.hintMove?.rect || null,
+                availableMoves: this.availableMoves.length,
+                undoAvailable: this.history.length,
                 score: this.score,
                 scoreMode: this.scoreMode(),
                 elapsed: Number(this.elapsed.toFixed(2)),
@@ -1560,6 +1723,10 @@
             this.currentRemoved = 0;
             this.playing = false;
             this.animating = false;
+            this.operationVersion = 0;
+            this.ocrVersion = 0;
+            this.solving = false;
+            this.cancelSolver = null;
             this.ocrImageCanvas = null;
             this.ocrCrop = null;
             this.ocrDragging = false;
@@ -1567,6 +1734,11 @@
         }
 
         init() {
+            const suspend = () => {
+                if (!document.getElementById("ten-helper-screen")?.classList.contains("active") || document.hidden) this.pause();
+            };
+            document.addEventListener("arcade:screenchange", suspend);
+            document.addEventListener("visibilitychange", suspend);
             this.renderInputs(blankGrid());
             this.ensurePlaybackCells();
             this.attachEvents();
@@ -1660,8 +1832,14 @@
                     input.addEventListener("input", () => {
                         input.value = input.value.replace(/[^\d]/g, "").slice(0, 1);
                         input.classList.remove("warning");
+                        this.pause();
+                        this.ocrVersion += 1;
                         this.solution = null;
                         this.currentStep = 0;
+                        this.currentScore = 0;
+                        this.currentRemoved = 0;
+                        this.moveListEl.innerHTML = "";
+                        this.statusEl.textContent = "Edited";
                         this.currentGrid = this.readGrid();
                         this.renderPlayback(this.currentGrid);
                         this.updateControls();
@@ -1700,6 +1878,7 @@
 
         loadGrid(grid, status, warnings = []) {
             this.pause();
+            this.ocrVersion += 1;
             this.solution = null;
             this.currentStep = 0;
             this.currentScore = 0;
@@ -1724,11 +1903,13 @@
                 this.setOcrStatus("Image only");
                 return;
             }
+            const version = ++this.ocrVersion;
             this.setOcrStatus("Loading image...");
             const url = URL.createObjectURL(file);
             const image = new Image();
             image.onload = () => {
                 URL.revokeObjectURL(url);
+                if (version !== this.ocrVersion) return;
                 const maxSide = 980;
                 const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
                 const source = document.createElement("canvas");
@@ -1747,6 +1928,7 @@
             };
             image.onerror = () => {
                 URL.revokeObjectURL(url);
+                if (version !== this.ocrVersion) return;
                 this.setOcrStatus("Load failed");
             };
             image.src = url;
@@ -1818,6 +2000,9 @@
                 return;
             }
             this.pause();
+            const version = ++this.ocrVersion;
+            const imageCanvas = this.ocrImageCanvas;
+            const crop = { ...this.ocrCrop };
             this.ocrRunBtn.disabled = true;
             this.ocrAutoBtn.disabled = true;
             this.solveBtn.disabled = true;
@@ -1827,7 +2012,11 @@
             try {
                 for (let r = 0; r < ROWS; r += 1) {
                     for (let c = 0; c < COLS; c += 1) {
-                        const cellCanvas = makeCellCanvas(this.ocrImageCanvas, this.cellRectForOcr(r, c));
+                        if (version !== this.ocrVersion) return;
+                        const cellCanvas = makeCellCanvas(imageCanvas, {
+                            x: crop.x + crop.w * c / COLS, y: crop.y + crop.h * r / ROWS,
+                            w: crop.w / COLS, h: crop.h / ROWS,
+                        });
                         const result = classifyDigitTemplate(cellCanvas);
                         grid[r][c] = result.value || 0;
                         if (!result.value || result.confidence < 0.58 || result.margin < 0.025) {
@@ -1844,7 +2033,10 @@
                     for (let i = 0; i < deepLimit; i += 1) {
                         const cell = uncertain[i];
                         this.setOcrStatus(`Deep OCR ${i + 1}/${deepLimit}`);
-                        const deep = await recognizeDigitDeep(cell.canvas, (text) => this.setOcrStatus(text));
+                        const deep = await recognizeDigitDeep(cell.canvas, (text) => {
+                            if (version === this.ocrVersion) this.setOcrStatus(text);
+                        });
+                        if (version !== this.ocrVersion) return;
                         if (deep.value && deep.confidence >= 0.35) {
                             grid[cell.r][cell.c] = deep.value;
                             const warningIndex = warnings.findIndex((item) => item.r === cell.r && item.c === cell.c);
@@ -1855,6 +2047,7 @@
                     }
                 }
 
+                if (version !== this.ocrVersion) return;
                 this.loadGrid(grid, "OCR loaded", warnings);
                 const filled = gridToFlat(grid).filter((value) => value > 0).length;
                 this.setOcrStatus(`${filled}/${CELL_COUNT} cells · ${warnings.length} check`);
@@ -1868,8 +2061,31 @@
             }
         }
 
+        solveInBackground(grid, options) {
+            return new Promise((resolve, reject) => {
+                const worker = new Worker(new URL("merge10.js", document.baseURI));
+                let settled = false;
+                const finish = (result, error) => {
+                    if (settled) return;
+                    settled = true;
+                    worker.terminate();
+                    this.cancelSolver = null;
+                    if (error) reject(error);
+                    else resolve(result);
+                };
+                this.cancelSolver = () => finish(null);
+                worker.onmessage = ({ data }) => {
+                    if (data.error) finish(null, new Error(data.error));
+                    else finish(data.solution);
+                };
+                worker.onerror = () => finish(null, new Error("Solver could not start"));
+                worker.postMessage({ grid, options });
+            });
+        }
+
         async solve() {
             this.pause();
+            const version = this.operationVersion;
             const grid = this.readGrid();
             const flat = gridToFlat(grid);
             if (!totalNonZero(flat)) {
@@ -1877,23 +2093,32 @@
                 return;
             }
             this.statusEl.textContent = "Solving...";
-            this.solveBtn.disabled = true;
-            await sleep(20);
-            const solution = solveMerge10Grid(grid, {
-                scoreMode: this.scoreModeEl.value,
-                beamWidth: Number(this.beamWidthEl.value),
-                timeLimit: Number(this.timeLimitEl.value),
-            });
-            this.solution = solution;
-            this.currentStep = 0;
-            this.currentScore = 0;
-            this.currentRemoved = 0;
-            this.currentGrid = cloneGrid(solution.initial_grid);
-            this.renderPlayback(this.currentGrid);
-            this.renderMoveList();
-            this.statusEl.textContent = solution.total_moves ? "Solved" : "No moves";
-            this.updateSummary();
+            this.solving = true;
             this.updateControls();
+            try {
+                const solution = await this.solveInBackground(grid, {
+                    scoreMode: this.scoreModeEl.value,
+                    beamWidth: Number(this.beamWidthEl.value),
+                    timeLimit: Number(this.timeLimitEl.value),
+                });
+                if (version !== this.operationVersion || !solution) return;
+                this.solution = solution;
+                this.currentStep = 0;
+                this.currentScore = 0;
+                this.currentRemoved = 0;
+                this.currentGrid = cloneGrid(solution.initial_grid);
+                this.renderPlayback(this.currentGrid);
+                this.renderMoveList();
+                this.statusEl.textContent = solution.total_moves ? "Solved" : "No moves";
+                this.updateSummary();
+            } catch (error) {
+                if (version === this.operationVersion) this.statusEl.textContent = "Unable to solve. Please try again.";
+            } finally {
+                if (version === this.operationVersion) {
+                    this.solving = false;
+                    this.updateControls();
+                }
+            }
         }
 
         renderPlayback(grid, activeMove = null, removing = false) {
@@ -1965,14 +2190,17 @@
 
         async playNext(animated) {
             if (!this.solution || this.animating || this.currentStep >= this.solution.moves.length) return;
+            const version = this.operationVersion;
             const move = this.solution.moves[this.currentStep];
             this.animating = true;
             this.renderPlayback(this.currentGrid, move, false);
             this.highlightMoveList();
             if (animated) {
                 await sleep(240);
+                if (version !== this.operationVersion) return;
                 this.renderPlayback(this.currentGrid, move, true);
                 await sleep(210);
+                if (version !== this.operationVersion) return;
             }
             move.removed_cells.forEach((cell) => {
                 this.currentGrid[cell.r][cell.c] = 0;
@@ -1990,17 +2218,25 @@
         async playLoop() {
             if (!this.solution || this.playing) return;
             this.playing = true;
+            const version = this.operationVersion;
             this.updateControls();
-            while (this.playing && this.currentStep < this.solution.moves.length) {
+            while (this.playing && version === this.operationVersion && this.solution && this.currentStep < this.solution.moves.length) {
                 await this.playNext(true);
                 if (this.playing) await sleep(90);
             }
+            if (version !== this.operationVersion) return;
             this.playing = false;
             this.updateControls();
         }
 
         pause() {
+            this.operationVersion += 1;
+            if (this.solving) this.statusEl.textContent = "Solve cancelled";
+            if (this.cancelSolver) this.cancelSolver();
+            this.solving = false;
             this.playing = false;
+            this.animating = false;
+            this.renderPlayback(this.currentGrid);
             this.updateControls();
         }
 
@@ -2028,14 +2264,14 @@
 
         updateControls() {
             const hasSolution = Boolean(this.solution);
-            const hasMoves = Boolean(this.solution?.moves?.length);
+            const hasMoves = Boolean(this.solution?.moves?.length) && !this.solving;
             this.playBtn.disabled = !hasMoves || this.playing || this.animating || this.currentStep >= this.solution.moves.length;
             this.pauseBtn.disabled = !this.playing;
             this.prevBtn.disabled = !hasMoves || this.animating || this.currentStep <= 0;
             this.nextBtn.disabled = !hasMoves || this.animating || this.currentStep >= (this.solution?.moves?.length || 0);
             this.copyBtn.disabled = !hasSolution;
             this.jsonBtn.disabled = !hasSolution;
-            this.solveBtn.disabled = false;
+            this.solveBtn.disabled = this.solving;
             this.updateSummary();
         }
 
@@ -2091,6 +2327,18 @@
                 coordinateSystem: "rows and columns are zero-based; r increases downward, c increases rightward",
             };
         }
+    }
+
+    // The same static file runs the pure solver in a worker, keeping the page responsive.
+    if (typeof window === "undefined") {
+        self.onmessage = ({ data }) => {
+            try {
+                self.postMessage({ solution: solveMerge10Grid(data.grid, data.options) });
+            } catch (error) {
+                self.postMessage({ error: error.message || "Unable to solve" });
+            }
+        };
+        return;
     }
 
     window.initMerge10Game = function initMerge10Game() {

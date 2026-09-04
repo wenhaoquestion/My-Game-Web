@@ -13,18 +13,20 @@ function bestKeyForSize(size) {
 }
 
 function loadBest2048(size) {
-    const raw = localStorage.getItem(bestKeyForSize(size));
-    const n = parseInt(raw, 10);
-    return Number.isFinite(n) ? n : 0;
+    try {
+        const n = parseInt(localStorage.getItem(bestKeyForSize(size)), 10);
+        return Number.isFinite(n) ? n : 0;
+    } catch { return 0; }
 }
 
 function saveBest2048(size, score) {
-    localStorage.setItem(bestKeyForSize(size), String(score));
+    try { localStorage.setItem(bestKeyForSize(size), String(score)); } catch { /* Keep playing without persistence. */ }
 }
 
 class Game2048 {
     constructor(rootEl, options = {}) {
         this.rootEl = rootEl; // .board-2048 元素
+        this.rootEl.tabIndex = -1;
         this.bgEl = rootEl.querySelector("#board-2048-bg");
         this.tilesEl = rootEl.querySelector("#board-2048-tiles");
 
@@ -32,6 +34,11 @@ class Game2048 {
         this.bestEl = document.getElementById("game2048-best");
         this.stateLabelEl = document.getElementById("game2048-state-label");
         this.winDialogEl = document.getElementById("game2048-win-dialog");
+        this.undoBtn = document.getElementById("game2048-undo-btn");
+        this.feedbackEl = document.getElementById("game2048-feedback");
+        this.movesEl = document.getElementById("game2048-moves");
+        this.history = [];
+        this.moveCount = 0;
 
         this.size = options.size || DEFAULT_BOARD_SIZE;  // 棋盘边长
         this.tileSize = this.computeTileSize(this.size);
@@ -47,28 +54,40 @@ class Game2048 {
         this.buildBackground();
         this.bindKeyboard();
         this.bindTouch();
+        const resizeBoard = () => {
+            if (!this.isActiveScreen()) return;
+            this.render();
+        };
+        if (typeof ResizeObserver !== "undefined") {
+            this.resizeObserver = new ResizeObserver(resizeBoard);
+            this.resizeObserver.observe(this.rootEl);
+        } else {
+            window.addEventListener("resize", resizeBoard);
+        }
+        document.addEventListener("arcade:screenchange", resizeBoard);
 
         this.updateScoreUI();
-        this.reset();
+        if (!this.restoreSession()) this.reset();
     }
 
     // 根据 size 计算 tile 像素大小，让整体内框差不多保持不变
     computeTileSize(size) {
-        const inner = REF_BOARD_INNER; // 固定目标尺寸
+        const inner = this.tilesEl.getBoundingClientRect().width || REF_BOARD_INNER;
         const totalGap = TILE_GAP * (size - 1);
         return (inner - totalGap) / size;
     }
 
     // 对外暴露：修改棋盘大小，比如 game2048.setBoardSize(5)
     setBoardSize(newSize) {
-        if (newSize < 3 || newSize > 6) return; // 限制范围，你可以改
+        if (!Number.isInteger(newSize) || newSize < 3 || newSize > 6 || newSize === this.size) return;
+        this.saveSession();
         this.size = newSize;
         this.tileSize = this.computeTileSize(newSize);
         this.best = loadBest2048(this.size);
 
         // 更新背景格子 + 状态
         this.buildBackground();
-        this.reset();
+        if (!this.restoreSession()) this.reset();
     }
 
     emptyGrid() {
@@ -92,7 +111,13 @@ class Game2048 {
     bindKeyboard() {
         window.addEventListener("keydown", (e) => {
             // 只有在 2048 screen 显示的时候响应
-            if (!this.isActiveScreen()) return;
+            if (!this.isActiveScreen() || document.hidden) return;
+            if (e.target instanceof Element && e.target.closest("input, textarea, select, button, a, [role=\"button\"], [contenteditable=\"true\"]")) return;
+            if (e.key.toLowerCase() === "u" || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z")) {
+                this.undo();
+                e.preventDefault();
+                return;
+            }
             if (this.state === "over") return;
 
             let handled = false;
@@ -167,6 +192,8 @@ class Game2048 {
     }
 
     reset() {
+        this.history = [];
+        this.moveCount = 0;
         this.grid = this.emptyGrid();
         this.tiles = [];
         this.score = 0;
@@ -179,11 +206,77 @@ class Game2048 {
         this.updateScoreUI();
         this.render();
         this.updateStateLabel();
+        this.feedback("Make your first move. Your game saves automatically.");
+        this.saveSession();
+    }
+
+    snapshot() {
+        return { size: this.size, board: this.grid.map(row => row.map(tile => tile?.value || 0)), score: this.score,
+            state: this.state, endlessMode: this.endlessMode, moveCount: this.moveCount };
+    }
+
+    restoreSnapshot(snapshot) {
+        this.grid = this.emptyGrid();
+        this.tiles = [];
+        snapshot.board.forEach((row, r) => row.forEach((value, c) => {
+            if (!value) return;
+            const tile = { id: this.nextTileId++, value, row: r, col: c, new: false, merged: false };
+            this.grid[r][c] = tile;
+            this.tiles.push(tile);
+        }));
+        this.score = snapshot.score;
+        this.state = snapshot.state;
+        this.endlessMode = snapshot.endlessMode;
+        this.moveCount = snapshot.moveCount;
+        this.state === "won" ? this.showWinDialog() : this.hideWinDialog();
+        this.updateScoreUI();
+        this.updateStateLabel();
+        this.render();
+    }
+
+    saveSession() {
+        try { localStorage.setItem(`game2048_session_${this.size}`, JSON.stringify(this.snapshot())); } catch { /* Play remains available without storage. */ }
+    }
+
+    restoreSession() {
+        try {
+            const saved = JSON.parse(localStorage.getItem(`game2048_session_${this.size}`));
+            const validValue = value => Number.isInteger(value) && value >= 0 && value <= 1073741824 && (value === 0 || (value >= 2 && Number.isInteger(Math.log2(value))));
+            if (!saved || saved.size !== this.size || !Array.isArray(saved.board) || saved.board.length !== this.size ||
+                !saved.board.every(row => Array.isArray(row) && row.length === this.size && row.every(validValue)) ||
+                !saved.board.flat().some(Boolean) || !Number.isSafeInteger(saved.score) || saved.score < 0 ||
+                !Number.isSafeInteger(saved.moveCount) || saved.moveCount < 0 || !["playing", "won", "over"].includes(saved.state) ||
+                typeof saved.endlessMode !== "boolean") return false;
+            this.history = [];
+            this.restoreSnapshot(saved);
+            this.feedback("Welcome back. Your saved board is ready.");
+            return true;
+        } catch { return false; }
+    }
+
+    feedback(text) {
+        if (this.feedbackEl) this.feedbackEl.textContent = text;
+    }
+
+    undo() {
+        if (!this.history.length) return;
+        this.restoreSnapshot(this.history.pop());
+        this.rootEl.classList.remove("board-pulse", "board-pulse-strong");
+        this.feedback("Move undone — including its new tile and score.");
+        this.saveSession();
+        this.rootEl.focus({ preventScroll: true });
     }
 
     updateScoreUI() {
         if (this.scoreEl) this.scoreEl.textContent = String(this.score);
         if (this.bestEl) this.bestEl.textContent = String(this.best);
+        if (this.movesEl) this.movesEl.textContent = String(this.moveCount);
+        if (this.undoBtn) this.undoBtn.disabled = this.history.length === 0;
+        document.querySelectorAll("[data-board-size]").forEach(button => {
+            const active = Number(button.dataset.boardSize) === this.size;
+            button.classList.toggle("active", active);
+            button.setAttribute("aria-pressed", String(active));
+        });
     }
 
     updateStateLabel() {
@@ -214,6 +307,7 @@ class Game2048 {
         this.state = "playing";
         this.hideWinDialog();
         this.updateStateLabel();
+        this.saveSession();
     }
 
     acknowledgeWin() {
@@ -293,6 +387,7 @@ class Game2048 {
 
     move(vector) {
         if (this.state !== "playing") return;
+        const before = this.snapshot();
 
         let moved = false;
         let anyMerged = false;
@@ -351,20 +446,31 @@ class Game2048 {
             }
         }
 
-        if (!moved) return;
+        if (!moved) {
+            this.feedback("That direction is blocked. Try another way.");
+            return;
+        }
 
+        this.history.push(before);
+        if (this.history.length > 50) this.history.shift();
+        this.moveCount += 1;
         this.addRandomTile();
         this.updateScoreUI();
         this.render();
         this.checkGameOver();
         this.updateStateLabel();
+        this.feedback(this.state === "over" ? "No moves left. Undo to try a different route, or start again." :
+            anyMerged ? `+${this.score - before.score} points. Keep making space.` : "Moved. Look for matching tiles.");
+        this.saveSession();
 
         if (anyMerged) {
             this.pulseBoard(maxMergeValue);
         }
+        window.ArcadeFeedback?.play(this.state === "won" ? "win" : this.state === "over" ? "lose" : anyMerged ? "score" : "move");
     }
 
     checkGameOver() {
+        if (this.state === "won") return;
         if (this.canMove()) return;
         this.state = "over";
     }
@@ -385,6 +491,7 @@ class Game2048 {
     }
 
     render() {
+        this.tileSize = this.computeTileSize(this.size);
         // 简单做法：清 DOM，再渲染（数量不大）
         this.tilesEl.innerHTML = "";
 
@@ -410,6 +517,8 @@ class Game2048 {
             // 设置动态宽高
             el.style.width = `${this.tileSize}px`;
             el.style.height = `${this.tileSize}px`;
+            el.style.fontSize = `${Math.min(24, this.tileSize / (String(tile.value).length * 0.62 + 0.4))}px`;
+            el.setAttribute("aria-label", `Row ${tile.row + 1}, column ${tile.col + 1}: ${tile.value}`);
 
             // 计算像素坐标
             const x = tile.col * (this.tileSize + TILE_GAP);
@@ -427,13 +536,15 @@ let game2048 = null;
 
 function init2048Game() {
     const boardEl = document.getElementById("game2048-board");
-    if (!boardEl) return;
+    if (!boardEl || game2048) return;
     game2048 = new Game2048(boardEl);
+    document.getElementById("game2048-undo-btn")?.addEventListener("click", () => game2048.undo());
 
     const newGameBtn = document.getElementById("game2048-newgame-btn");
     if (newGameBtn) {
         newGameBtn.addEventListener("click", () => {
             game2048.reset();
+            boardEl.focus({ preventScroll: true });
         });
     }
 
@@ -441,6 +552,7 @@ function init2048Game() {
     if (continueBtn) {
         continueBtn.addEventListener("click", () => {
             game2048.continueEndless();
+            boardEl.focus({ preventScroll: true });
         });
     }
 
@@ -457,7 +569,16 @@ function init2048Game() {
             const s = parseInt(btn.dataset.boardSize, 10);
             if (Number.isFinite(s)) {
                 game2048.setBoardSize(s);
+                boardEl.focus({ preventScroll: true });
             }
         });
     });
+}
+
+{
+    const previous = window.render_game_to_text;
+    window.render_game_to_text = () => document.body.dataset.game === "2048" && game2048
+        ? JSON.stringify({ game: "2048", ...game2048.snapshot(), undoAvailable: game2048.history.length,
+            coordinateSystem: "board[row][column], zero-based from top left" })
+        : typeof previous === "function" ? previous() : JSON.stringify({ game: document.body.dataset.game });
 }

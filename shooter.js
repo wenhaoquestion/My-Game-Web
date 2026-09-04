@@ -1,5 +1,5 @@
 // shooter.js — Neon Space Shooter
-// Controls: ← → / A D to move, Space to shoot, Shift for bomb
+// Controls: drag / ← → / A D to move, auto-fire / Space to shoot, Shift for bomb
 // Levels 1–5 + Endless mode
 
 (function () {
@@ -13,6 +13,7 @@
     const ENEMY_BULLET_SPEED = 200;
     const SHOOT_COOLDOWN = 0.14; // seconds between player shots
     const BOMB_COOLDOWN = 8;     // seconds between bombs
+    const COMBO_WINDOW = 4;
 
     const HIGHSCORE_KEY = "shooter_highscore";
 
@@ -41,10 +42,12 @@
     function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
 
     function loadHS() {
-        const n = parseInt(localStorage.getItem(HIGHSCORE_KEY) || "0", 10);
-        return Number.isFinite(n) ? n : 0;
+        try {
+            const n = parseInt(localStorage.getItem(HIGHSCORE_KEY) || "0", 10);
+            return Number.isFinite(n) ? n : 0;
+        } catch { return 0; }
     }
-    function saveHS(s) { localStorage.setItem(HIGHSCORE_KEY, String(s)); }
+    function saveHS(s) { try { localStorage.setItem(HIGHSCORE_KEY, String(s)); } catch { /* Session score is still kept. */ } }
 
     // ===================== PARTICLES =====================
     class Particle {
@@ -218,14 +221,15 @@
             return true;
         }
 
-        hitBy(r) {
-            if (this.invincible || this.shield) return false;
-            return dist(this, { x: this.x, y: this.y }) < this.radius + r;
-        }
-
         takeDamage() {
             if (this.invincible) return false;
-            if (this.shield) { this.shield = false; this.shieldTimer = 0; return false; }
+            if (this.shield) {
+                this.shield = false;
+                this.shieldTimer = 0;
+                this.invincible = true;
+                this.invincibleTimer = 0.6;
+                return false;
+            }
             this.hp--;
             this.invincible = true;
             this.invincibleTimer = 1.8;
@@ -264,6 +268,7 @@
             this.y += this.speed * dt;
             if (this.typeName === "zigzag") {
                 this.x += Math.sin(this.time * 2.8 + this.phase) * 120 * dt;
+                this.x = clamp(this.x, this.radius, CANVAS_W - this.radius);
             }
             if (this.shootInterval) {
                 this.shootTimer -= dt;
@@ -347,7 +352,7 @@
             this.hp = this.maxHp;
             this.speed = 60;
             this.phase = "enter"; // enter | fight | dead
-            this.shootTimer = 0;
+            this.shootTimer = 0.7;
             this.shootInterval = Math.max(0.8, 2.0 - level * 0.2);
             this.time = 0;
             this.level = level;
@@ -377,7 +382,7 @@
             // Spread pattern depends on level
             const count = Math.min(3 + this.level, 7);
             for (let i = 0; i < count; i++) {
-                const a = (Math.PI / (count - 1)) * i + Math.PI / 2;
+                const a = Math.PI / 4 + (Math.PI / 2) * i / (count - 1);
                 bullets.push({
                     x: this.x, y: this.y + this.radius,
                     vx: Math.cos(a) * ENEMY_BULLET_SPEED * 0.8,
@@ -425,6 +430,12 @@
             ctx.font = "bold 11px system-ui";
             ctx.textAlign = "center";
             ctx.fillText(`BOSS  ${this.hp} / ${this.maxHp}`, this.x, by + 20);
+            if (this.phase === "fight" && this.shootTimer < 0.4) {
+                ctx.fillStyle = "#fff0b3";
+                ctx.beginPath();
+                ctx.arc(this.x, this.y + this.radius, 5 + (0.4 - this.shootTimer) * 12, 0, Math.PI * 2);
+                ctx.fill();
+            }
         }
         get offScreen() { return false; }
     }
@@ -492,6 +503,7 @@
         constructor() {
             this.canvas = document.getElementById("shooter-canvas");
             if (!this.canvas) return;
+            this.canvas.tabIndex = 0;
             this.ctx = this.canvas.getContext("2d");
             this.canvas.width = CANVAS_W;
             this.canvas.height = CANVAS_H;
@@ -503,6 +515,20 @@
             this.highscore = loadHS();
             this.kills = 0;
             this.killGoal = 20;
+            this.combo = 0;
+            this.comboTimer = 0;
+            this.bestCombo = 0;
+            this.totalKills = 0;
+            this.elapsed = 0;
+            this.autoFire = true;
+            this.pointerId = null;
+            this.pointerX = null;
+            this.pointerLastX = null;
+            this.touchDirections = new Map();
+            this.keyboardDirections = new Set();
+            this.floatingText = [];
+            this.noticeTimer = 0;
+            this.damageFlash = 0;
 
             this.player = null;
             this.enemies = [];
@@ -523,10 +549,24 @@
 
             this.keys = {};
             this.lastTime = null;
+            this.rafId = null;
 
             this.ui = this.cacheUI();
             this.bindEvents();
             this.bindButtons();
+            const suspend = () => {
+                if (!this.isActiveScreen() || document.hidden) {
+                    this.releaseInput();
+                    this.pause();
+                }
+            };
+            document.addEventListener("arcade:screenchange", suspend);
+            document.addEventListener("arcade:pause", (event) => {
+                if (event.detail?.gameId === "shooter") this.pause();
+            });
+            document.addEventListener("visibilitychange", suspend);
+            window.addEventListener("blur", () => { this.releaseInput(); this.pause(); });
+            this.showMenu();
             this.draw();
             this.updateUI();
         }
@@ -541,6 +581,15 @@
                 bombs: document.getElementById("shooter-bombs"),
                 spread: document.getElementById("shooter-spread"),
                 shield: document.getElementById("shooter-shield"),
+                speed: document.getElementById("shooter-speed"),
+                combo: document.getElementById("shooter-combo"),
+                hullLive: document.getElementById("shooter-hull-live"),
+                scoreLive: document.getElementById("shooter-score-live"),
+                resultStats: document.getElementById("shooter-result-stats"),
+                autoBtn: document.getElementById("shooter-auto-btn"),
+                bombBtn: document.getElementById("shooter-bomb-btn"),
+                pauseBtn: document.getElementById("shooter-pause-btn"),
+                startBtn: document.getElementById("shooter-start-btn"),
                 message: document.getElementById("shooter-message"),
                 overlay: document.getElementById("shooter-overlay"),
                 overlayTitle: document.getElementById("shooter-overlay-title"),
@@ -560,7 +609,10 @@
 
         bindEvents() {
             window.addEventListener("keydown", (e) => {
-                if (!this.isActiveScreen()) return;
+                if (!this.isActiveScreen() || document.hidden) return;
+                if (e.target instanceof Element && e.target.closest("input, textarea, select, button, a, [role=\"button\"], [contenteditable=\"true\"]")) return;
+                if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Space"].includes(e.code)) e.preventDefault();
+                if (e.repeat && ["KeyP", "Escape", "ShiftLeft", "ShiftRight"].includes(e.code)) return;
                 this.keys[e.code] = true;
                 if (e.code === "Space") {
                     e.preventDefault();
@@ -571,11 +623,35 @@
                     if (this.state === "playing" || this.state === "boss") this.triggerBomb();
                 }
                 if (e.code === "KeyP" || e.code === "Escape") {
-                    if (this.state === "playing" || this.state === "boss") this.pause();
+                    if (["playing", "boss", "countdown"].includes(this.state)) this.pause();
                     else if (this.state === "paused") this.resume();
                 }
             });
             window.addEventListener("keyup", (e) => { this.keys[e.code] = false; });
+            this.canvas.addEventListener("pointerdown", (e) => {
+                if (!this.isActiveScreen() || document.hidden || !this.isFlying() || this.pointerId !== null || e.button !== 0) return;
+                e.preventDefault();
+                this.canvas.focus({ preventScroll: true });
+                this.pointerId = e.pointerId;
+                this.pointerLastX = e.clientX;
+                this.pointerX = this.player.x;
+                this.canvas.setPointerCapture(e.pointerId);
+            });
+            this.canvas.addEventListener("pointermove", (e) => {
+                if (e.pointerId !== this.pointerId) return;
+                const scale = CANVAS_W / this.canvas.getBoundingClientRect().width;
+                this.pointerX = clamp(this.pointerX + (e.clientX - this.pointerLastX) * scale, this.player.radius, CANVAS_W - this.player.radius);
+                this.pointerLastX = e.clientX;
+            });
+            const releasePointer = (e) => {
+                if (e.pointerId !== this.pointerId) return;
+                this.pointerId = null;
+                this.pointerX = null;
+                this.pointerLastX = null;
+            };
+            this.canvas.addEventListener("pointerup", releasePointer);
+            this.canvas.addEventListener("pointercancel", releasePointer);
+            this.canvas.addEventListener("lostpointercapture", releasePointer);
         }
 
         bindButtons() {
@@ -584,7 +660,73 @@
             const p = this.ui?.overlayPrimary;
             const s = this.ui?.overlaySecondary;
             if (p) p.addEventListener("click", () => this.overlayPrimary());
-            if (s) s.addEventListener("click", () => this.startGame());
+            if (s) s.addEventListener("click", () => {
+                if (this.state === "paused") this.startGame();
+                else {
+                    this.showMenu();
+                    this.ui.levelSelect.focus({ preventScroll: false });
+                }
+            });
+            this.ui.autoBtn.addEventListener("click", () => {
+                this.autoFire = !this.autoFire;
+                this.notify(this.autoFire ? "Auto-fire on. Focus on steering." : "Auto-fire off. Hold Space or ↑ to fire.");
+                this.updateUI();
+                this.canvas.focus({ preventScroll: true });
+            });
+            this.ui.bombBtn.addEventListener("click", () => {
+                this.triggerBomb();
+                this.canvas.focus({ preventScroll: true });
+            });
+            this.ui.pauseBtn.addEventListener("click", () => this.state === "paused" ? this.resume() : this.pause());
+            this.ui.endlessCheck.addEventListener("change", () => { this.ui.levelSelect.disabled = this.ui.endlessCheck.checked; });
+            for (const [id, direction] of [["shooter-left-btn", -1], ["shooter-right-btn", 1]]) {
+                const button = document.getElementById(id);
+                button.addEventListener("pointerdown", (e) => {
+                    if (!this.isFlying() || e.button !== 0) return;
+                    e.preventDefault();
+                    this.canvas.focus({ preventScroll: true });
+                    this.touchDirections.set(e.pointerId, direction);
+                    button.setPointerCapture(e.pointerId);
+                });
+                for (const name of ["pointerup", "pointercancel", "lostpointercapture"]) {
+                    button.addEventListener(name, (e) => this.touchDirections.delete(e.pointerId));
+                }
+                button.addEventListener("keydown", (e) => {
+                    if (!["Space", "Enter"].includes(e.code) || !this.isFlying()) return;
+                    e.preventDefault();
+                    this.keyboardDirections.add(direction);
+                });
+                button.addEventListener("keyup", (e) => {
+                    if (["Space", "Enter"].includes(e.code)) this.keyboardDirections.delete(direction);
+                });
+                button.addEventListener("blur", () => this.keyboardDirections.delete(direction));
+            }
+        }
+
+        isFlying() { return this.state === "playing" || this.state === "boss"; }
+
+        releaseInput() {
+            this.keys = {};
+            this.pointerId = null;
+            this.pointerX = null;
+            this.pointerLastX = null;
+            this.touchDirections.clear();
+            this.keyboardDirections.clear();
+        }
+
+        notify(message, duration = 3) {
+            this.noticeTimer = duration;
+            this.ui.message.textContent = message;
+        }
+
+        showMenu() {
+            this.stopFrame();
+            this.releaseInput();
+            this.state = "menu";
+            this.showOverlay("Ready for launch", "Drag or use ← → to steer. Clear the targets, then take on the boss. Enemies that escape damage your hull.", "Launch", "");
+            this.notify(this.autoFire ? "Drag the battlefield to steer. Your ship fires automatically." : "Manual fire selected. Hold Space or ↑ to shoot.", 0);
+            this.updateUI();
+            this.draw();
         }
 
         getLevelDef() {
@@ -607,17 +749,41 @@
             return this.endless ? this.getEndlessDef() : (this.getLevelDef() || LEVELS[LEVELS.length - 1]);
         }
 
+        scheduleFrame() {
+            if (this.rafId !== null) return;
+            this.rafId = requestAnimationFrame((timestamp) => {
+                this.rafId = null;
+                this.loop(timestamp);
+            });
+        }
+
+        stopFrame() {
+            if (this.rafId !== null) cancelAnimationFrame(this.rafId);
+            this.rafId = null;
+        }
+
         startGame() {
+            if (!this.isActiveScreen() || document.hidden) return;
+            this.stopFrame();
+            this.releaseInput();
             const sel = this.ui?.levelSelect;
             const ec = this.ui?.endlessCheck;
             this.endless = ec?.checked || false;
             if (!this.endless && sel) {
-                this.levelIndex = parseInt(sel.value, 10) - 1;
+                this.levelIndex = clamp((parseInt(sel.value, 10) || 1) - 1, 0, 4);
             }
             this.endlessLevel = 1;
             this.score = 0;
             this.kills = 0;
             this.killGoal = this.endless ? 25 : 20;
+            this.combo = 0;
+            this.comboTimer = 0;
+            this.bestCombo = 0;
+            this.totalKills = 0;
+            this.elapsed = 0;
+            this.floatingText = [];
+            this.damageFlash = 0;
+            this.bombFlash = 0;
             this.enemies = [];
             this.playerBullets = [];
             this.enemyBullets = [];
@@ -629,43 +795,50 @@
             this.waveTimer = 0;
             this.player = new Player(CANVAS_W / 2, CANVAS_H - 70);
             this.player.bombs = 1;
+            this.player.invincible = true;
+            this.player.invincibleTimer = 1.5;
             this.state = "countdown";
             this.countdownTimer = 3;
+            this.notify(this.autoFire ? "Auto-fire ready. Steer to protect the flight line." : "Manual fire. Hold Space or ↑ to shoot.", 4);
             this.hideOverlay();
             this.lastTime = null;
-            requestAnimationFrame((t) => this.loop(t));
+            if (this.isActiveScreen()) this.canvas.focus({ preventScroll: true });
+            this.scheduleFrame();
             this.updateUI();
         }
 
         pause() {
-            if (this.state !== "playing" && this.state !== "boss") return;
+            if (!["playing", "boss", "countdown"].includes(this.state)) return;
+            this.stopFrame();
+            this.releaseInput();
             this._prevState = this.state;
             this.state = "paused";
-            this.showOverlay("Paused", "Press Space or Resume to continue", "Resume", "Restart");
+            this.showOverlay("Flight paused", "Your flight is on hold. Resume when you are ready.", "Resume", "Restart");
+            this.updateUI();
         }
         resume() {
-            if (this.state !== "paused") return;
+            if (this.state !== "paused" || !this.isActiveScreen() || document.hidden) return;
             this.state = this._prevState || "playing";
             this.hideOverlay();
             this.lastTime = null;
-            requestAnimationFrame((t) => this.loop(t));
+            if (this.isActiveScreen()) this.canvas.focus({ preventScroll: true });
+            this.scheduleFrame();
+            this.updateUI();
         }
 
         overlayPrimary() {
             if (this.state === "paused") this.resume();
-            else if (this.state === "gameover" || this.state === "victory") this.startGame();
+            else if (["menu", "gameover", "victory"].includes(this.state)) this.startGame();
             else if (this.state === "levelclear") this.nextLevel();
         }
 
         triggerBomb() {
+            if (!this.isFlying() || !this.isActiveScreen() || document.hidden) return;
             if (!this.player?.canBomb()) return;
             if (!this.player.useBomb()) return;
             // Destroy all enemies on screen
             this.enemies.forEach(e => {
-                this.score += e.score;
-                this.kills++;
-                this.spawnExplosion(e.x, e.y, e.color, 10);
-                e.dead = true;
+                if (!e.dead && e.y >= 0) this.defeatEnemy(e, false);
             });
             if (this.boss && this.bossPhase) {
                 const dmg = Math.ceil(this.boss.maxHp * 0.15);
@@ -675,7 +848,46 @@
             }
             this.enemyBullets = [];
             this.bombFlash = 0.35;
+            this.notify("Bomb deployed · enemy fire cleared", 2);
+            if (this.isFlying()) this.checkWin();
             this.updateUI();
+        }
+
+        get multiplier() { return Math.min(4, 1 + Math.floor(this.combo / 5)); }
+
+        defeatEnemy(enemy, dropsPowerup = true) {
+            if (enemy.dead) return;
+            enemy.dead = true;
+            this.combo++;
+            this.comboTimer = COMBO_WINDOW;
+            this.bestCombo = Math.max(this.bestCombo, this.combo);
+            const points = enemy.score * this.multiplier;
+            this.score += points;
+            this.kills++;
+            this.totalKills++;
+            window.ArcadeFeedback?.play(this.combo % 5 === 0 ? "combo" : "score");
+            this.spawnExplosion(enemy.x, enemy.y, enemy.color, 8);
+            this.floatingText.push({ x: enemy.x, y: enemy.y, text: `+${points}`, color: this.multiplier > 1 ? "#ffd166" : "#c6e6ff", life: 0.8 });
+            if (this.combo % 5 === 0) this.notify(`${this.combo} target chain · ×${this.multiplier} score`, 2);
+            // A guaranteed drop every sixth target keeps upgrades available on unlucky runs.
+            if (dropsPowerup && (this.kills % 6 === 0 || Math.random() < 0.12)) {
+                this.powerups.push(new PowerUp(enemy.x, enemy.y, POWERUP_TYPES[randInt(0, 2)]));
+            }
+        }
+
+        damagePlayer(reason) {
+            if (this.player.invincible) return;
+            const shielded = this.player.shield;
+            const damaged = this.player.takeDamage();
+            if (shielded) this.notify("Shield absorbed the hit", 2);
+            if (!damaged) return;
+            this.combo = 0;
+            this.comboTimer = 0;
+            this.damageFlash = 0.25;
+            window.ArcadeFeedback?.play("hit");
+            this.spawnExplosion(this.player.x, this.player.y, "#ff7b7b", 8);
+            this.notify(reason, 2.5);
+            if (this.player.hp <= 0) this.gameOver();
         }
 
         spawnExplosion(x, y, color, count = 8) {
@@ -714,33 +926,46 @@
         }
 
         checkWin() {
-            if (!this.bossPhase && this.kills >= this.killGoal) {
+            if (this.isFlying() && !this.bossPhase && this.kills >= this.killGoal) {
                 this.bossPhase = true;
                 this.enemies = [];
                 this.enemyBullets = [];
                 const lvl = this.endless ? this.endlessLevel : (this.levelIndex + 1);
                 this.boss = new Boss(lvl, this.currentDef());
+                this.state = "boss";
+                this.notify("Boss approaching · watch for the glowing cannon", 4);
             }
         }
 
         defeatBoss() {
+            if (!this.boss || !this.isFlying()) return;
             this.score += this.boss.maxHp * 5;
             this.spawnExplosion(this.boss.x, this.boss.y, this.boss.color, 25);
             this.boss = null;
             this.bossPhase = false;
+            this.stopFrame();
+            this.releaseInput();
+            this.enemyBullets = [];
+            this.playerBullets = [];
+            this.comboTimer = 0;
+            this.combo = 0;
+            this.player.hp = Math.min(this.player.maxHp, this.player.hp + 1);
+            this.player.bombTimer = 0;
             // Give bomb
             if (this.currentDef().givesBomb) this.player.bombs = Math.min(this.player.bombs + 1, 3);
+            this.saveRecord();
+            window.ArcadeFeedback?.play("win");
             if (this.endless) {
                 // Advance endless level
                 this.endlessLevel++;
                 this.kills = 0;
-                this.killGoal = Math.round(this.killGoal * 1.3);
+                this.killGoal = Math.min(60, Math.round(this.killGoal * 1.3));
                 this.state = "levelclear";
                 this.levelClearTimer = 0;
                 this.showOverlay(
                     `Wave ${this.endlessLevel - 1} Cleared!`,
-                    `Score: ${this.score.toLocaleString()} · Prepare for next wave`,
-                    "Next Wave", "Quit"
+                    "Hull repaired +1 · Bomb restocked. Ready for the next wave?",
+                    "Next Wave", "Change setup"
                 );
             } else {
                 // Check if more levels
@@ -748,8 +973,8 @@
                     this.state = "levelclear";
                     this.showOverlay(
                         `${LEVELS[this.levelIndex].name} Cleared!`,
-                        `Score: ${this.score.toLocaleString()} · Ready for next sector?`,
-                        "Next Level", "Restart"
+                        "Hull repaired +1 · Bomb restocked. Ready for the next sector?",
+                        "Next Sector", "Change setup"
                     );
                 } else {
                     this.gameVictory();
@@ -759,44 +984,51 @@
         }
 
         nextLevel() {
-            if (this.endless) {
-                // Resume endless
-                this.state = "playing";
-                this.enemies = [];
-                this.spawnTimer = 0;
-                this.hideOverlay();
-                this.lastTime = null;
-                requestAnimationFrame((t) => this.loop(t));
-            } else {
-                this.levelIndex++;
-                this.kills = 0;
-                this.killGoal = 20;
-                this.enemies = [];
-                this.playerBullets = [];
-                this.enemyBullets = [];
-                this.powerups = [];
-                this.boss = null;
-                this.bossPhase = false;
-                this.spawnTimer = 0;
-                this.state = "countdown";
-                this.countdownTimer = 3;
-                this.hideOverlay();
-                this.lastTime = null;
-                requestAnimationFrame((t) => this.loop(t));
-            }
+            if (this.state !== "levelclear" || !this.isActiveScreen() || document.hidden) return;
+            this.stopFrame();
+            this.releaseInput();
+            if (!this.endless) { this.levelIndex++; this.killGoal = 20; }
+            this.kills = 0;
+            this.enemies = [];
+            this.playerBullets = [];
+            this.enemyBullets = [];
+            this.powerups = [];
+            this.boss = null;
+            this.bossPhase = false;
+            this.spawnTimer = 0;
+            this.player.x = CANVAS_W / 2;
+            this.player.invincible = true;
+            this.player.invincibleTimer = 1.5;
+            this.state = "countdown";
+            this.countdownTimer = 2;
+            this.notify(this.autoFire ? "New flight · auto-fire ready. Protect the flight line." : "New flight · hold Space or ↑ to fire.", 4);
+            this.hideOverlay();
+            this.lastTime = null;
+            this.canvas.focus({ preventScroll: true });
+            this.scheduleFrame();
+            this.updateUI();
+        }
+
+        saveRecord() {
+            if (this.score > this.highscore) { this.highscore = this.score; saveHS(this.score); }
         }
 
         gameOver() {
+            this.stopFrame();
+            this.releaseInput();
             this.state = "gameover";
-            if (this.score > this.highscore) { this.highscore = this.score; saveHS(this.score); }
-            this.showOverlay("Game Over", `Score: ${this.score.toLocaleString()}  ·  Best: ${this.highscore.toLocaleString()}`, "Play Again", "Restart");
+            window.ArcadeFeedback?.play("lose");
+            this.saveRecord();
+            this.showOverlay("Flight complete", "Keep enemies above the flight line. Save a bomb for crowded skies.", "Fly Again", "Change setup");
             this.updateUI();
         }
 
         gameVictory() {
+            this.stopFrame();
+            this.releaseInput();
             this.state = "victory";
-            if (this.score > this.highscore) { this.highscore = this.score; saveHS(this.score); }
-            this.showOverlay("Victory!", `All 5 sectors cleared!\nScore: ${this.score.toLocaleString()}`, "Play Again", "Restart");
+            this.saveRecord();
+            this.showOverlay("Mission accomplished", "Sector 5 secured. Try Endless Mode for a longer flight.", "Fly Again", "Change setup");
             this.updateUI();
         }
 
@@ -806,6 +1038,21 @@
             this.ui.overlayDesc.textContent = desc;
             this.ui.overlayPrimary.textContent = primary;
             this.ui.overlaySecondary.textContent = secondary;
+            this.ui.overlaySecondary.hidden = !secondary;
+            const showStats = ["gameover", "victory", "levelclear"].includes(this.state);
+            this.ui.resultStats.hidden = !showStats;
+            this.ui.resultStats.replaceChildren();
+            if (showStats) {
+                for (const [label, value] of [["Score", this.score.toLocaleString()], ["Best chain", `${this.bestCombo} targets`], ["Targets", this.totalKills], ["Flight time", `${Math.floor(this.elapsed / 60)}:${String(Math.floor(this.elapsed % 60)).padStart(2, "0")}`]]) {
+                    const stat = document.createElement("div");
+                    const name = document.createElement("span");
+                    const result = document.createElement("strong");
+                    name.textContent = label;
+                    result.textContent = String(value);
+                    stat.append(name, result);
+                    this.ui.resultStats.append(stat);
+                }
+            }
             this.ui.overlay.classList.add("visible");
         }
         hideOverlay() { this.ui?.overlay.classList.remove("visible"); }
@@ -820,15 +1067,31 @@
                 : (LEVELS[this.levelIndex]?.name || "—");
             this.ui.level.textContent = lvlName;
             this.ui.hp.textContent = p ? "❤".repeat(Math.max(0, p.hp)) || "☆" : "—";
-            this.ui.kills.textContent = `${this.kills} / ${this.killGoal}`;
-            this.ui.bombs.textContent = p ? "💣".repeat(Math.max(0, p.bombs)) || "0" : "—";
-            this.ui.spread.textContent = p?.spread ? `Spread ${p.spreadTimer.toFixed(1)}s` : "—";
-            this.ui.shield.textContent = p?.shield ? `Shield ${p.shieldTimer.toFixed(1)}s` : "—";
-            const bc = p ? Math.max(0, p.bombTimer).toFixed(1) : "—";
-            this.ui.bombCooldown.textContent = p && p.bombTimer > 0 ? `Bomb CD: ${bc}s` : "Bomb: Ready";
+            this.ui.kills.textContent = this.bossPhase ? "Boss engaged" : `${this.kills} / ${this.killGoal}`;
+            this.ui.bombs.textContent = p ? String(p.bombs) : "1";
+            this.ui.spread.textContent = p?.spread ? `${Math.ceil(p.spreadTimer)}s` : "—";
+            this.ui.shield.textContent = p?.shield ? `${Math.ceil(p.shieldTimer)}s` : "—";
+            this.ui.speed.textContent = p?.speedBoost ? `${Math.ceil(p.speedTimer)}s` : "—";
+            this.ui.combo.textContent = this.combo ? `${this.combo} · ×${this.multiplier}` : "×1";
+            this.ui.hullLive.textContent = `${p ? Math.max(0, p.hp) : 3} / 3`;
+            this.ui.scoreLive.textContent = this.score.toLocaleString();
+            const flying = this.isFlying();
+            const cooldown = p ? Math.ceil(Math.max(0, p.bombTimer)) : 0;
+            this.ui.bombBtn.disabled = !flying || !p?.canBomb();
+            this.ui.bombBtn.textContent = cooldown ? `Bomb · ${cooldown}s` : `Bomb · ${p?.bombs ?? 1}`;
+            this.ui.bombCooldown.textContent = !p ? "Launch to deploy" : p.bombs === 0 ? "Restock by clearing the boss" : cooldown ? `Recharging: ${cooldown}s` : "Ready · clears enemy fire";
+            this.ui.pauseBtn.disabled = !["playing", "boss", "countdown", "paused"].includes(this.state);
+            this.ui.pauseBtn.textContent = this.state === "paused" ? "Resume" : "Pause";
+            this.ui.autoBtn.textContent = `Auto: ${this.autoFire ? "On" : "Off"}`;
+            this.ui.autoBtn.setAttribute("aria-pressed", String(this.autoFire));
+            this.ui.startBtn.textContent = this.state === "menu" ? "Launch" : "Restart flight";
         }
 
         loop(timestamp) {
+            if (!this.isActiveScreen() || document.hidden) {
+                this.pause();
+                return;
+            }
             if (this.lastTime === null) this.lastTime = timestamp;
             const dt = Math.min((timestamp - this.lastTime) / 1000, 0.05);
             this.lastTime = timestamp;
@@ -845,9 +1108,10 @@
                 this.stars.update(dt);
                 if (this.countdownTimer <= 0) {
                     this.state = "playing";
+                    this.updateUI();
                 }
                 this.draw();
-                requestAnimationFrame((t) => this.loop(t));
+                this.scheduleFrame();
                 return;
             }
 
@@ -856,25 +1120,41 @@
             this.draw();
 
             if (this.state === "playing" || this.state === "boss") {
-                requestAnimationFrame((t) => this.loop(t));
+                this.scheduleFrame();
             }
         }
 
         update(dt) {
+            if (!this.isFlying() || !this.player) return;
+            this.elapsed += dt;
             this.stars.update(dt);
             this.player.update(dt);
+            if (this.comboTimer > 0) {
+                this.comboTimer = Math.max(0, this.comboTimer - dt);
+                if (!this.comboTimer) this.combo = 0;
+            }
+            this.damageFlash = Math.max(0, this.damageFlash - dt);
+            this.floatingText.forEach(t => { t.y -= dt * 32; t.life -= dt; });
+            this.floatingText = this.floatingText.filter(t => t.life > 0);
+            if (this.noticeTimer > 0) {
+                this.noticeTimer -= dt;
+                if (this.noticeTimer <= 0) this.ui.message.textContent = this.bossPhase ? "Dodge the fan of fire. The cannon glows before each burst." : "Keep the flight line clear. Chain targets for a score bonus.";
+            }
 
             // Movement
             const speed = this.player.speedBoost ? PLAYER_SPEED * 1.6 : PLAYER_SPEED;
-            if (this.keys["ArrowLeft"] || this.keys["KeyA"]) {
-                this.player.x = clamp(this.player.x - speed * dt, this.player.radius, CANVAS_W - this.player.radius);
-            }
-            if (this.keys["ArrowRight"] || this.keys["KeyD"]) {
-                this.player.x = clamp(this.player.x + speed * dt, this.player.radius, CANVAS_W - this.player.radius);
+            const heldDirections = [...this.touchDirections.values(), ...this.keyboardDirections];
+            const left = this.keys["ArrowLeft"] || this.keys["KeyA"] || heldDirections.includes(-1);
+            const right = this.keys["ArrowRight"] || this.keys["KeyD"] || heldDirections.includes(1);
+            if (left || right) {
+                this.player.x = clamp(this.player.x + (Number(Boolean(right)) - Number(Boolean(left))) * speed * dt, this.player.radius, CANVAS_W - this.player.radius);
+                if (this.pointerId !== null) this.pointerX = this.player.x;
+            } else if (this.pointerX !== null) {
+                this.player.x += clamp(this.pointerX - this.player.x, -speed * dt, speed * dt);
             }
 
             // Shoot
-            if ((this.keys["Space"] || this.keys["ArrowUp"]) && this.player.canShoot()) {
+            if ((this.autoFire || this.keys["Space"] || this.keys["ArrowUp"]) && this.player.canShoot()) {
                 const blist = this.player.shoot();
                 blist.forEach(b => this.playerBullets.push(new Bullet(b)));
             }
@@ -894,8 +1174,9 @@
 
             // Update enemies
             this.enemies.forEach(e => {
+                if (e.dead) return;
                 e.update(dt);
-                if (e.canShoot()) {
+                if (e.canShoot() && e.y >= 0 && e.y < CANVAS_H - 110) {
                     this.enemyBullets.push(new Bullet({
                         x: e.x, y: e.y + e.radius,
                         vx: 0, vy: ENEMY_BULLET_SPEED, color: e.color,
@@ -915,7 +1196,7 @@
             }
 
             // Player bullets hit enemies / boss
-            this.playerBullets.forEach(b => {
+            for (const b of this.playerBullets) {
                 b.update(dt);
                 // vs enemies
                 this.enemies.forEach(e => {
@@ -924,15 +1205,7 @@
                         b.dead = true;
                         this.spawnExplosion(b.x, b.y, e.color, 4);
                         if (e.hp <= 0) {
-                            e.dead = true;
-                            this.score += e.score;
-                            this.kills++;
-                            this.spawnExplosion(e.x, e.y, e.color, 8);
-                            // Powerup drop
-                            if (Math.random() < 0.12) {
-                                const type = POWERUP_TYPES[randInt(0, 2)];
-                                this.powerups.push(new PowerUp(e.x, e.y, type));
-                            }
+                            this.defeatEnemy(e);
                         }
                     }
                 });
@@ -941,36 +1214,37 @@
                     b.dead = true;
                     this.boss.hp--;
                     this.spawnExplosion(b.x, b.y, "#ffffff", 3);
-                    if (this.boss.hp <= 0) this.defeatBoss();
+                    if (this.boss.hp <= 0) { this.defeatBoss(); return; }
                 }
-            });
+            }
 
             // Move enemy bullets
             this.enemyBullets.forEach(b => b.update(dt));
 
             // Enemy bullets hit player
-            if (!this.player.invincible) {
-                this.enemyBullets.forEach(b => {
-                    if (!b.dead && dist(b, this.player) < b.radius + this.player.radius) {
-                        b.dead = true;
-                        if (this.player.takeDamage()) {
-                            this.spawnExplosion(this.player.x, this.player.y, "#5aaaff", 6);
-                            if (this.player.hp <= 0) this.gameOver();
-                        }
-                    }
-                });
+            for (const b of this.enemyBullets) {
+                if (!b.dead && dist(b, this.player) < b.radius + this.player.radius * 0.65) {
+                    b.dead = true;
+                    this.damagePlayer("Hull hit · brief protection active");
+                    if (!this.isFlying()) return;
+                }
             }
 
-            // Enemies reaching bottom
-            this.enemies.forEach(e => {
-                if (!e.dead && e.y > CANVAS_H - 20) {
+            // Ship collisions and enemies crossing the visible flight line.
+            for (const e of this.enemies) {
+                if (e.dead) continue;
+                if (dist(e, this.player) < e.radius + this.player.radius * 0.65) {
                     e.dead = true;
-                    if (this.player.takeDamage()) {
-                        this.spawnExplosion(this.player.x, this.player.y, "#ff6b6b", 8);
-                        if (this.player.hp <= 0) this.gameOver();
-                    }
+                    this.spawnExplosion(e.x, e.y, e.color, 6);
+                    this.damagePlayer("Collision · steer around incoming ships");
+                } else if (e.y > CANVAS_H - 20) {
+                    e.dead = true;
+                    this.combo = 0;
+                    this.comboTimer = 0;
+                    this.damagePlayer("Enemy escaped · protect the flight line");
                 }
-            });
+                if (!this.isFlying()) return;
+            }
 
             // Powerups
             this.powerups.forEach(pu => {
@@ -978,6 +1252,8 @@
                 if (!pu.dead && dist(pu, this.player) < pu.radius + this.player.radius) {
                     this.player.applyPowerup(pu.type);
                     pu.dead = true;
+                    this.notify({ spread: "Spread fire · 3 shots for 7 seconds", shield: "Shield online · absorbs one hit for 8 seconds", speed: "Engine boost · faster steering for 6 seconds" }[pu.type], 3);
+                    this.spawnExplosion(pu.x, pu.y, "#7ef9ff", 5);
                 }
             });
 
@@ -1021,6 +1297,48 @@
             this.playerBullets.forEach(b => b.draw(ctx));
             this.enemyBullets.forEach(b => b.draw(ctx));
             if (this.player) this.player.draw(ctx);
+            this.floatingText.forEach(t => {
+                ctx.save();
+                ctx.globalAlpha = Math.min(1, t.life * 2);
+                ctx.fillStyle = t.color;
+                ctx.font = "bold 15px system-ui";
+                ctx.textAlign = "center";
+                ctx.fillText(t.text, t.x, t.y);
+                ctx.restore();
+            });
+
+            if (this.isFlying()) {
+                const danger = this.enemies.some(e => !e.dead && e.y > CANVAS_H - 150);
+                ctx.save();
+                ctx.strokeStyle = danger ? "#ff7676" : "rgba(130,170,205,0.35)";
+                ctx.setLineDash([5, 6]);
+                ctx.beginPath();
+                ctx.moveTo(12, CANVAS_H - 20);
+                ctx.lineTo(CANVAS_W - 12, CANVAS_H - 20);
+                ctx.stroke();
+                ctx.fillStyle = danger ? "#ffaaa6" : "#869aaf";
+                ctx.font = "9px system-ui";
+                ctx.textAlign = "center";
+                ctx.fillText(danger ? "DEFEND THE FLIGHT LINE" : "FLIGHT LINE", CANVAS_W / 2, CANVAS_H - 6);
+                if (this.combo > 0) {
+                    ctx.fillStyle = "#ffd166";
+                    ctx.font = "bold 13px system-ui";
+                    ctx.textAlign = "left";
+                    ctx.fillText(`${this.combo} CHAIN  ×${this.multiplier}`, 14, 47);
+                    ctx.fillStyle = "rgba(255,209,102,0.25)";
+                    ctx.fillRect(14, 54, 90, 3);
+                    ctx.fillStyle = "#ffd166";
+                    ctx.fillRect(14, 54, 90 * this.comboTimer / COMBO_WINDOW, 3);
+                }
+                ctx.restore();
+            }
+            if (this.damageFlash > 0) {
+                ctx.save();
+                ctx.strokeStyle = `rgba(255,90,100,${this.damageFlash * 3})`;
+                ctx.lineWidth = 12;
+                ctx.strokeRect(0, 0, CANVAS_W, CANVAS_H);
+                ctx.restore();
+            }
 
             // Countdown
             if (this.state === "countdown") {
@@ -1062,8 +1380,51 @@
                 ctx.fillStyle = "rgba(255,80,80,0.8)";
                 ctx.font = "bold 12px system-ui";
                 ctx.textAlign = "center";
-                ctx.fillText("⚠ BOSS INCOMING", CANVAS_W / 2, 22);
+                ctx.fillText(this.boss.phase === "enter" ? "BOSS APPROACHING" : "BOSS ENGAGED", CANVAS_W / 2, 22);
             }
+        }
+
+        renderGameToText() {
+            const round = value => Math.round(value * 10) / 10;
+            return JSON.stringify({
+                game: "shooter", coordinates: "origin top-left; x right, y down; 420×600",
+                state: this.state, mode: this.endless ? "endless" : "sectors",
+                sector: this.endless ? this.endlessLevel : this.levelIndex + 1,
+                score: this.score, highscore: this.highscore, kills: this.kills, targetKills: this.killGoal,
+                combo: this.combo, multiplier: this.multiplier, comboSeconds: round(this.comboTimer),
+                bestCombo: this.bestCombo, totalKills: this.totalKills, elapsed: round(this.elapsed), autoFire: this.autoFire,
+                countdown: this.state === "countdown" ? round(this.countdownTimer) : null,
+                player: this.player ? {
+                    x: round(this.player.x), y: round(this.player.y), hp: this.player.hp,
+                    bombs: this.player.bombs, bombCooldown: round(this.player.bombTimer), invincible: this.player.invincible,
+                    shieldSeconds: round(Math.max(0, this.player.shieldTimer)), spreadSeconds: round(Math.max(0, this.player.spreadTimer)), speedSeconds: round(Math.max(0, this.player.speedTimer)),
+                } : null,
+                boss: this.boss ? { x: round(this.boss.x), y: round(this.boss.y), hp: this.boss.hp, maxHp: this.boss.maxHp, phase: this.boss.phase, nextShot: round(this.boss.shootTimer) } : null,
+                enemies: this.enemies.filter(e => !e.dead).map(e => ({ type: e.typeName, x: round(e.x), y: round(e.y), hp: e.hp })),
+                playerBullets: this.playerBullets.filter(b => !b.dead).map(b => ({ x: round(b.x), y: round(b.y) })),
+                enemyBullets: this.enemyBullets.filter(b => !b.dead).map(b => ({ x: round(b.x), y: round(b.y), vx: round(b.vx), vy: round(b.vy) })),
+                powerups: this.powerups.filter(p => !p.dead).map(p => ({ type: p.type, x: round(p.x), y: round(p.y) })),
+                message: this.ui.message.textContent,
+            });
+        }
+
+        advanceTime(ms) {
+            if (!this.isActiveScreen() || document.hidden || !Number.isFinite(ms) || ms <= 0) return;
+            this.stopFrame();
+            const frames = Math.max(1, Math.ceil(ms / (1000 / 60)));
+            const dt = ms / 1000 / frames;
+            for (let i = 0; i < frames; i++) {
+                if (this.state === "countdown") {
+                    this.stars.update(dt);
+                    this.countdownTimer -= dt;
+                    if (this.countdownTimer <= 0) this.state = "playing";
+                } else if (this.isFlying()) this.update(dt);
+                else break;
+            }
+            this.lastTime = null;
+            this.updateUI();
+            this.draw();
+            if (this.isFlying() || this.state === "countdown") this.scheduleFrame();
         }
     }
 
@@ -1071,8 +1432,13 @@
     let shooterGame = null;
 
     function initShooterGame() {
+        if (shooterGame) return;
         shooterGame = new ShooterGame();
         window.shooterGame = shooterGame;
+        const previousText = window.render_game_to_text;
+        const previousAdvance = window.advanceTime;
+        window.render_game_to_text = () => document.body.dataset.game === "shooter" ? shooterGame.renderGameToText() : previousText?.() ?? "{}";
+        window.advanceTime = (ms) => document.body.dataset.game === "shooter" ? shooterGame.advanceTime(ms) : previousAdvance?.(ms);
     }
 
     window.initShooterGame = initShooterGame;

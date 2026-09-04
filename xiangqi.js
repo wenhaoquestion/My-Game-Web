@@ -137,6 +137,11 @@
     let checkFlash = false;
     let checkFlashTimer = 0;
     let animFrame = null;
+    let gameVersion = 0;
+    let aiTimer = null;
+    let undoStack = [];
+    let moveHistory = [];
+    let hintMove = null;
 
     // ===================== BOARD INIT =====================
     function createInitialBoard() {
@@ -834,6 +839,18 @@
         drawBoard();
         drawLastMove();
         drawLegalMoves();
+        if (hintMove) {
+            const from = canvasXY(hintMove.fromRow, hintMove.fromCol);
+            const to = canvasXY(hintMove.toRow, hintMove.toCol);
+            ctx.save();
+            ctx.strokeStyle = "#d9fa71";
+            ctx.lineWidth = 4;
+            ctx.setLineDash([8, 7]);
+            ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.beginPath(); ctx.arc(to.x, to.y, PIECE_R + 7, 0, Math.PI * 2); ctx.stroke();
+            ctx.restore();
+        }
 
         // Draw all pieces
         for (let r = 0; r < ROWS; r++) {
@@ -851,8 +868,29 @@
     // ===================== GAME LOOP =====================
     let lastTimestamp = 0;
 
+    function isActive() {
+        return !document.hidden && document.body.dataset.gameHelp !== "open" && document.getElementById("xiangqi-screen")?.classList.contains("active");
+    }
+
+    function syncActivity() {
+        if (animFrame !== null) cancelAnimationFrame(animFrame);
+        animFrame = null;
+        if (isActive()) {
+            lastTimestamp = performance.now();
+            animFrame = requestAnimationFrame(gameLoop);
+            if (!gameOver && gameMode === "pve" && currentTurn === BLACK && !aiThinking) scheduleAI();
+        } else {
+            gameVersion++;
+            clearTimeout(aiTimer);
+            aiThinking = false;
+        }
+        updateTools();
+    }
+
     function gameLoop(timestamp) {
-        const dt = (timestamp - lastTimestamp) / 1000;
+        animFrame = null;
+        if (!isActive()) return;
+        const dt = Math.min((timestamp - lastTimestamp) / 1000, 0.05);
         lastTimestamp = timestamp;
         pulseT += dt;
         if (checkFlashTimer > 0) {
@@ -885,7 +923,8 @@
     }
 
     function handleClick(clientX, clientY) {
-        if (gameOver || aiThinking) return;
+        if (!isActive() || gameOver || aiThinking) return;
+        hintMove = null;
         if (gameMode === "pve" && currentTurn === BLACK) return;
 
         const cell = screenToCell(clientX, clientY);
@@ -922,6 +961,8 @@
     }
 
     function makeMove(fromRow, fromCol, toRow, toCol) {
+        undoStack.push(snapshot());
+        hintMove = null;
         const captured = board[toRow][toCol];
         if (captured) {
             if (captured.side === RED) capturedRed.push(captured);
@@ -929,12 +970,17 @@
         }
 
         board = applyMove(board, fromRow, fromCol, toRow, toCol);
+        moveHistory.push(`${currentTurn === RED ? "Red" : "Black"}: R${fromRow + 1}C${fromCol + 1} → R${toRow + 1}C${toCol + 1}${captured ? " ×" : ""}`);
         lastMove = {fromRow, fromCol, toRow, toCol};
         selected = null;
         legalMoves = [];
 
         // Switch turn
         currentTurn = currentTurn === RED ? BLACK : RED;
+        updateCapturedDisplay();
+        updateTools();
+        setCoach(`${moveHistory.at(-1)}. ${isInCheck(board, currentTurn) ? "General in check — answer the threat." : "Choose a piece to see its legal moves."}`);
+        window.ArcadeFeedback?.play(captured ? "score" : "move");
 
         // Check for check/checkmate/stalemate
         postMoveCheck();
@@ -993,9 +1039,16 @@
     }
 
     function scheduleAI() {
+        if (!isActive() || gameOver || gameMode !== "pve" || currentTurn !== BLACK || aiThinking) return;
+        const version = gameVersion;
+        clearTimeout(aiTimer);
         aiThinking = true;
+        updateTools();
         updateStatus("黑方思考中...");
-        setTimeout(() => {
+        aiTimer = setTimeout(() => {
+            aiTimer = null;
+            if (version !== gameVersion || gameOver || currentTurn !== BLACK || gameMode !== "pve") return;
+            if (!isActive()) { aiThinking = false; return; }
             const move = getBestMove(board, BLACK);
             aiThinking = false;
             if (move) {
@@ -1011,6 +1064,78 @@
     function updateStatus(text) {
         const el = document.getElementById("xiangqi-status");
         if (el) el.textContent = text;
+    }
+
+    function snapshot() {
+        return JSON.parse(JSON.stringify({ board, currentTurn, capturedRed, capturedBlack, lastMove, gameOver, winner, moveHistory }));
+    }
+
+    function setCoach(text) {
+        const el = document.getElementById("xiangqi-coach");
+        if (el) el.textContent = text;
+    }
+
+    function updateTools() {
+        const undo = document.getElementById("xiangqi-undo-btn");
+        const hint = document.getElementById("xiangqi-hint-btn");
+        if (undo) undo.disabled = !undoStack.length;
+        if (hint) hint.disabled = gameOver || aiThinking || (gameMode === "pve" && currentTurn !== RED);
+        const history = document.getElementById("xiangqi-move-history");
+        if (history) history.textContent = moveHistory.slice(-8).join("\n");
+    }
+
+    function undoMove() {
+        if (!undoStack.length) return;
+        gameVersion++;
+        clearTimeout(aiTimer);
+        aiTimer = null;
+        aiThinking = false;
+        let previous = undoStack.pop();
+        if (gameMode === "pve" && previous.currentTurn === BLACK && undoStack.length) previous = undoStack.pop();
+        ({ board, currentTurn, capturedRed, capturedBlack, lastMove, gameOver, winner, moveHistory } = previous);
+        selected = null;
+        legalMoves = [];
+        hintMove = null;
+        checkFlash = isInCheck(board, currentTurn);
+        checkFlashTimer = checkFlash ? 2.5 : 0;
+        hideOverlay();
+        updateCapturedDisplay();
+        updateTools();
+        updateStatus(currentTurn === RED ? "红方走棋" : "黑方走棋");
+        setCoach(gameMode === "pve" ? "Your turn restored, including the AI reply. Try another route." : "Last move undone. Captures and turn restored.");
+        render();
+    }
+
+    function showHint() {
+        if (!isActive() || gameOver || aiThinking || (gameMode === "pve" && currentTurn !== RED)) return;
+        const candidates = getAllLegalMoves(board, currentTurn);
+        if (!candidates.length) return;
+        const maximizing = currentTurn === RED;
+        const other = maximizing ? BLACK : RED;
+        const deadline = performance.now() + 140;
+        let best = candidates[0], bestScore = maximizing ? -Infinity : Infinity;
+        for (const move of candidates) {
+            const next = applyMove(board, move.fromRow, move.fromCol, move.toRow, move.toCol);
+            let score = evaluateBoard(next);
+            const replies = getAllLegalMoves(next, other);
+            if (!replies.length && isInCheck(next, other)) score = maximizing ? 100000 : -100000;
+            else if (replies.length) {
+                score = maximizing ? Infinity : -Infinity;
+                for (const reply of replies) {
+                    const after = applyMove(next, reply.fromRow, reply.fromCol, reply.toRow, reply.toCol);
+                    const value = evaluateBoard(after);
+                    score = maximizing ? Math.min(score, value) : Math.max(score, value);
+                    if (performance.now() > deadline) break;
+                }
+            }
+            if (maximizing ? score > bestScore : score < bestScore) { bestScore = score; best = move; }
+            if (performance.now() > deadline) break;
+        }
+        hintMove = best;
+        selected = { row: best.fromRow, col: best.fromCol };
+        legalMoves = getLegalMoves(board, best.fromRow, best.fromCol);
+        setCoach(`Consider R${best.fromRow + 1}C${best.fromCol + 1} → R${best.toRow + 1}C${best.toCol + 1}. Follow the highlighted route when ready.`);
+        render();
     }
 
     function updateCapturedDisplay() {
@@ -1040,6 +1165,11 @@
 
     // ===================== NEW GAME =====================
     function newGame() {
+        gameVersion += 1;
+        clearTimeout(aiTimer);
+        undoStack = [];
+        moveHistory = [];
+        hintMove = null;
         board = createInitialBoard();
         currentTurn = RED;
         selected = null;
@@ -1064,6 +1194,8 @@
         if (diffEl) aiDifficulty = diffEl.value;
 
         updateStatus("红方走棋");
+        updateTools();
+        setCoach("Select a piece to see legal destinations. Undo restores your whole turn against AI.");
     }
 
     // ===================== INIT =====================
@@ -1081,6 +1213,8 @@
         canvas.addEventListener("click", (e) => {
             handleClick(e.clientX, e.clientY);
         });
+        document.getElementById("xiangqi-undo-btn")?.addEventListener("click", undoMove);
+        document.getElementById("xiangqi-hint-btn")?.addEventListener("click", showHint);
 
         // Touch support
         canvas.addEventListener("touchstart", (e) => {
@@ -1109,11 +1243,20 @@
 
         newGame();
 
-        if (animFrame) cancelAnimationFrame(animFrame);
-        lastTimestamp = performance.now();
-        animFrame = requestAnimationFrame(gameLoop);
+        document.addEventListener("arcade:screenchange", syncActivity);
+        document.addEventListener("visibilitychange", syncActivity);
+        document.addEventListener("arcade:pause", syncActivity);
+        document.addEventListener("arcade:helpclose", syncActivity);
+        syncActivity();
     }
 
     window.initXiangqiGame = initXiangqiGame;
+
+    const previousText = window.render_game_to_text;
+    window.render_game_to_text = () => document.body.dataset.game === "xiangqi" && board.length
+        ? JSON.stringify({ game: "xiangqi", ...snapshot(), mode: gameMode, selected, legalDestinations: legalMoves,
+            hint: hintMove, aiThinking, undoAvailable: undoStack.length,
+            coordinateSystem: "row 0 is top (Black), column 0 is left; Red begins at bottom" })
+        : typeof previousText === "function" ? previousText() : JSON.stringify({ game: document.body.dataset.game });
 
 })();

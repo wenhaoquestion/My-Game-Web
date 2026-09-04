@@ -4,6 +4,9 @@ function initPokerGame() {
     const statusEl = document.getElementById("poker-status-label");
     const selectionHintEl = document.getElementById("poker-selection-hint");
     const calcBtn = document.getElementById("poker-calc-btn");
+    const cancelBtn = document.getElementById('poker-cancel-btn');
+    let simulationFrame = null;
+    let runVersion = 0;
     const clearBtn = document.getElementById("poker-clear-btn");
     const resetBtn = document.getElementById("poker-reset-btn");
     const opponentsSelect = document.getElementById("poker-opponents");
@@ -228,6 +231,7 @@ function initPokerGame() {
     }
 
     function updateAll() {
+        if (!state.running) resetResults();
         updateSlots();
         updateDeckButtons();
         updateSelectionUI();
@@ -340,6 +344,20 @@ function initPokerGame() {
         if (randomHeroBtn) randomHeroBtn.disabled = isRunning;
         if (randomBoardBtn) randomBoardBtn.disabled = isRunning;
         if (deckContainer) deckContainer.classList.toggle("disabled", isRunning);
+        if (opponentsSelect) opponentsSelect.disabled = isRunning;
+        if (iterationsRange) iterationsRange.disabled = isRunning;
+        if (cancelBtn) cancelBtn.hidden = !isRunning;
+    }
+
+    function cancelSimulation() {
+        if (!state.running) return;
+        runVersion++;
+        if (simulationFrame !== null) cancelAnimationFrame(simulationFrame);
+        simulationFrame = null;
+        setRunningState(false);
+        resetResults();
+        setStatus('Cancelled');
+        if (runSummaryEl) runSummaryEl.textContent = 'Simulation cancelled. Adjust your cards or calculate again.';
     }
 
     function drawFromDeck(deckPool, count, cursor) {
@@ -492,7 +510,9 @@ function initPokerGame() {
             return;
         }
 
+        resetResults();
         setRunningState(true);
+        const version = ++runVersion;
         setStatus("Running 0%");
         if (progressFill) progressFill.style.width = "0%";
         if (runSummaryEl) runSummaryEl.textContent = `Simulating ${iterations.toLocaleString()} hands...`;
@@ -506,8 +526,13 @@ function initPokerGame() {
         const batchSize = 300;
 
         function step() {
+            simulationFrame = null;
+            if (!state.running || version !== runVersion) return;
             const end = Math.min(iterations, done + batchSize);
+            const frameStart = performance.now();
+            const startDone = done;
             for (; done < end; done += 1) {
+                if (done > startDone && performance.now() - frameStart > 8) break;
                 const deckPool = availableDeck.slice();
                 const cursor = { value: 0 };
 
@@ -553,7 +578,7 @@ function initPokerGame() {
             if (runSummaryEl) runSummaryEl.textContent = `Simulating ${done.toLocaleString()} / ${iterations.toLocaleString()}`;
 
             if (done < iterations) {
-                requestAnimationFrame(step);
+                simulationFrame = requestAnimationFrame(step);
             } else {
                 const durationMs = performance.now() - startTime;
                 const winPct = (wins / iterations) * 100;
@@ -564,10 +589,11 @@ function initPokerGame() {
                 setRunningState(false);
                 setStatus("Done");
                 if (progressFill) progressFill.style.width = "100%";
+                window.ArcadeFeedback?.play('win');
             }
         }
 
-        requestAnimationFrame(step);
+        simulationFrame = requestAnimationFrame(step);
     }
 
     iterationsRange?.addEventListener("input", () => {
@@ -577,6 +603,11 @@ function initPokerGame() {
     });
 
     calcBtn?.addEventListener("click", calculateOdds);
+    cancelBtn?.addEventListener('click', cancelSimulation);
+    opponentsSelect?.addEventListener('change', () => { resetResults(); setStatus('Ready'); });
+    document.addEventListener('arcade:screenchange', () => { if (document.body.dataset.game !== 'poker') cancelSimulation(); });
+    document.addEventListener('visibilitychange', () => { if (document.hidden) cancelSimulation(); });
+    document.addEventListener('arcade:pause', cancelSimulation);
     clearBtn?.addEventListener("click", clearSelectedSlot);
     resetBtn?.addEventListener("click", resetAll);
     randomHeroBtn?.addEventListener("click", randomHero);
@@ -587,6 +618,8 @@ function initPokerGame() {
     updateAll();
     resetResults();
     setStatus("Ready");
+    const previous = window.render_game_to_text;
+    window.render_game_to_text = () => document.body.dataset.game === 'poker' ? JSON.stringify({ game: 'poker', hero: state.hero.map(card => card?.code || null), board: state.board.map(card => card?.code || null), running: state.running, status: statusEl.textContent, equity: equityValueEl.textContent }) : previous?.() || '{}';
 }
 
 window.initPokerGame = initPokerGame;

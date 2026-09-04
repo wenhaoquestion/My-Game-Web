@@ -1,0 +1,32 @@
+.game-topbar > .back-btn { grid-column: 1; grid-row: 1; }
+.play-tools { grid-column: 2; grid-row: 1; display: flex; gap: 8px; justify-content: flex-end; align-self: start; }
+.play-tool { min-height: 40px; padding: 8px 11px; border: 1px solid #343b36; border-radius: 6px; background: transparent; color: #b9c3b9; font: inherit; font-size: 12px; white-space: nowrap; }
+.play-tool:hover { color: #f4f3eb; border-color: #748371; }
+.play-tool[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
+.play-guide { color: #f4f3eb; background: #191d1a; border: 1px solid #465345; border-radius: 16px; padding: 30px; width: min(560px, calc(100% - 32px)); max-height: calc(100dvh - 40px); overflow: auto; font-family: var(--font-ui); box-shadow: 0 24px 100px #0008; }
+.play-guide::backdrop { background: #060906b8; backdrop-filter: blur(6px); }
+.play-guide-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 25px; }
+.play-guide-header h2 { margin: 0; font-size: 25px; letter-spacing: -.7px; }
+.play-guide-header button { padding: 8px 10px; color: #dae1d7; background: #272e28; border: 1px solid #4c574c; border-radius: 6px; font: inherit; font-size: 12px; min-height: 40px; }
+.play-guide-content section + section { margin-top: 24px; }
+.play-guide-content h3 { font-size: 14px; font-weight: 600; color: #d9fa71; margin: 0 0 8px; }
+.play-guide-content p { color: #c0c8bd; font-size: 15px; line-height: 1.65; margin: 0; }
+.play-guide-note { border-top: 1px solid #374035; margin: 26px 0 0; padding-top: 18px; color: #99a494; font-size: 12px; }
+.screen:fullscreen { background: #101411; padding: 24px; overflow: auto; width: 100%; height: 100%; margin: 0; }
+.screen:fullscreen .game-layout { padding-top: 0; }
+.play-progress { width: 100%; height: 6px; border: 0; border-radius: 4px; background: #333b30; accent-color: var(--accent); margin-top: 10px; }
+.play-progress::-webkit-progress-bar { background: #333b30; border-radius: 4px; }
+.play-progress::-webkit-progress-value { background: var(--accent); border-radius: 4px; }
+.play-progress::-moz-progress-bar { background: var(--accent); border-radius: 4px; }
+.coin-challenge-header { width: min(100%, 320px); text-align: center; }
+.coin-challenge-header label { display: block; color: #c8d1c3; font-size: 13px; margin-bottom: 8px; }
+.coin-challenge-header p { margin-top: 10px; }
+.coin-challenge-header .play-progress { margin-top: 0; }
+.coin-predict-btn:disabled { opacity: .55; cursor: default; }
+#coin-message { min-height: 48px; max-width: 420px; text-align: center; }
+@media (max-width: 600px) {
+    .play-tools { grid-row: 2; grid-column: 1 / -1; justify-content: flex-start; gap: 7px; }
+    .play-tool { min-height: 40px; padding-inline: 10px; }
+    .play-guide { padding: 22px; }
+    .screen:fullscreen { padding: 14px; }
+}

@@ -1,0 +1,26 @@
+#tetris-screen .game-layout { max-width: 940px; }
+body[data-game="tetris"] .app-header { min-height: 72px; }
+#tetris-screen .game-layout { padding-top: 12px; gap: 16px; }
+#tetris-screen .game-topbar { gap: 12px; }
+#tetris-screen .game-topbar-title h2 { font-size: 30px; margin-bottom: 6px; }
+#tetris-screen .game-topbar-title .subtitle { font-size: 12px; }
+#tetris-screen .canvas-layout { grid-template-columns: minmax(0, 360px) minmax(260px, 320px); justify-content: center; }
+.tetris-playfield { width: 100%; min-width: 0; }
+.tetris-playfield .tetris-board-wrap { width: min(100%, 320px, calc((100svh - 265px) / 2)); margin-inline: auto; }
+.tetris-touch-controls { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; max-width: 320px; margin: 12px auto 0; touch-action: none; }
+.tetris-touch-controls .btn { min-height: 44px; padding: 8px; font-size: 17px; user-select: none; }
+.tetris-touch-controls .tetris-drop { grid-column: span 2; font-size: 14px; }
+.tetris-playfield .play-feedback { min-height: 24px; max-width: 320px; margin: 0 auto 8px; font-size: 13px; color: #c9d4c6; }
+#tetris-next { display: flex; gap: 4px; width: 100%; height: auto; padding: 0; border: 0; background: none; }
+#tetris-next .tetris-mini { flex: 1; min-width: 0; width: auto; height: auto; aspect-ratio: 1; border: 0; padding: 0; }
+#tetris-next canvas { display: block; width: 100%; height: auto; }
+#tetris-hold { width: 80px; height: 80px; padding: 0; background: none; border: 0; }
+#tetris-hold .tetris-mini { width: 80px; height: 80px; border: 0; padding: 0; }
+#tetris-hold canvas { width: 80px; height: 80px; display: block; }
+#tetris-screen .game-sidebar .info-card { padding: 15px 18px; }
+#tetris-canvas { background: #10151a; }
+@media (max-width: 760px) {
+    #tetris-screen .canvas-layout { grid-template-columns: minmax(0, 1fr); }
+    .tetris-playfield .tetris-board-wrap { width: min(100%, 280px); }
+    .tetris-touch-controls { max-width: 320px; }
+}

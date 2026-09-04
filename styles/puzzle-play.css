@@ -1,0 +1,23 @@
+/* Puzzle controls and feedback stay next to the decision they describe. */
+.puzzle-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.puzzle-actions > .btn { flex: 1 1 110px; }
+.game-layout .puzzle-feedback { margin: 10px 0; color: var(--text-muted); font-size: .82rem; line-height: 1.6; }
+.puzzle-feedback[data-tone="warning"] { color: #ffbe9d; }
+.puzzle-feedback[data-tone="success"] { color: var(--accent); }
+.puzzle-board-tools { padding: 16px; border: 1px solid #343737; border-radius: 10px; background: #191b1b; }
+.puzzle-board-tools .puzzle-feedback:last-child { margin-bottom: 0; }
+.puzzle-board-column { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.puzzle-board-column .sudoku-board-wrap { width: 100%; }
+.sudoku-layout-inner > .puzzle-board-column { width: min(100%, 564px); justify-self: center; }
+.sudoku-cell.rule-conflict { box-shadow: inset 0 0 0 2px #ffab8a; }
+.sudoku-cell:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; z-index: 4; }
+.game-layout .puzzle-quick-actions .btn { min-height: 40px; }
+.merge10-cell.hint-cell { border-color: #d9fa71; background: #425328; box-shadow: inset 0 0 0 1px #d9fa71; }
+.merge10-cell.keyboard-anchor { outline: 2px dashed #fff; outline-offset: -3px; }
+.merge10-stage .puzzle-selection-readout { position: sticky; bottom: 8px; pointer-events: none; background: #101511f2; padding: 8px 13px; border: 1px solid #596447; border-radius: 7px; color: #eff9df; text-align: center; font-size: .85rem; }
+.merge10-stage .puzzle-selection-readout[data-valid="true"] { background: #d9fa71; color: #152008; }
+@media (max-width: 760px) {
+    .puzzle-board-tools { padding: 12px; }
+    .game-layout .puzzle-quick-actions .btn { min-height: 42px; }
+    .game-layout .puzzle-feedback { font-size: .8125rem; }
+}

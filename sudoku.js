@@ -306,7 +306,7 @@ function loadSudokuStats() {
 }
 
 function saveSudokuStats(stats) {
-    localStorage.setItem(SUDOKU_STATS_KEY, JSON.stringify(stats));
+    try { localStorage.setItem(SUDOKU_STATS_KEY, JSON.stringify(stats)); } catch { /* Session state remains available. */ }
 }
 
 function defaultSudokuSettings() {
@@ -331,7 +331,7 @@ function loadSudokuSettings() {
 }
 
 function saveSudokuSettings(settings) {
-    localStorage.setItem(SUDOKU_SETTINGS_KEY, JSON.stringify(settings));
+    try { localStorage.setItem(SUDOKU_SETTINGS_KEY, JSON.stringify(settings)); } catch { /* Session state remains available. */ }
 }
 
 class SudokuGame {
@@ -360,6 +360,10 @@ class SudokuGame {
         this.newGameBtn = document.getElementById("sudoku-newgame-btn");
         this.hintBtn = document.getElementById("sudoku-hint-btn");
         this.clearBtn = document.getElementById("sudoku-clear-btn");
+        this.undoBtn = document.getElementById("sudoku-undo-btn");
+        this.candidatesBtn = document.getElementById("sudoku-candidates-btn");
+        this.feedbackEl = document.getElementById("sudoku-feedback");
+        this.history = [];
 
         this.totalSolvesEl = document.getElementById("sudoku-total-solves");
         this.perfectSolvesEl = document.getElementById("sudoku-perfect-solves");
@@ -419,7 +423,7 @@ class SudokuGame {
 
     isActiveScreen() {
         const screen = document.getElementById("sudoku-screen");
-        return !!(screen && screen.classList.contains("active"));
+        return !!(screen && screen.classList.contains("active")) && document.body.dataset.gameHelp !== "open";
     }
 
     buildBoard() {
@@ -436,6 +440,7 @@ class SudokuGame {
                 cell.className = "sudoku-cell";
                 cell.dataset.r = String(r);
                 cell.dataset.c = String(c);
+                cell.tabIndex = r === 0 && c === 0 ? 0 : -1;
                 if (c % SUDOKU_BOX === SUDOKU_BOX - 1 && c !== SUDOKU_SIZE - 1) {
                     cell.classList.add("sudoku-block-right");
                 }
@@ -470,8 +475,18 @@ class SudokuGame {
     }
 
     bindEvents() {
+        document.addEventListener("arcade:screenchange", () => this.syncTimerActivity());
+        document.addEventListener("visibilitychange", () => this.syncTimerActivity());
+        document.addEventListener("arcade:pause", () => this.syncTimerActivity());
+        document.addEventListener("arcade:helpclose", () => this.syncTimerActivity());
         window.addEventListener("keydown", (e) => {
-            if (!this.isActiveScreen()) return;
+            if (!this.isActiveScreen() || document.hidden) return;
+            if (e.target instanceof Element && e.target.closest("input, textarea, select, button, a, [role=\"button\"], [contenteditable=\"true\"]")) return;
+            if (e.key.toLowerCase() === "u" || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z")) {
+                this.undo();
+                e.preventDefault();
+                return;
+            }
 
             if (e.key === "n" || e.key === "N") {
                 this.toggleNoteMode();
@@ -546,6 +561,8 @@ class SudokuGame {
         if (this.clearBtn) {
             this.clearBtn.addEventListener("click", () => this.clearSelected());
         }
+        this.undoBtn?.addEventListener("click", () => this.undo());
+        this.candidatesBtn?.addEventListener("click", () => this.fillCandidateNotes());
         if (this.noteToggleBtn) {
             this.noteToggleBtn.addEventListener("click", () => this.toggleNoteMode());
         }
@@ -713,12 +730,30 @@ class SudokuGame {
     startTimer() {
         this.stopTimer();
         this.startTime = Date.now();
+        this.timerPausedAt = null;
+        this.resumeTimer();
+        this.syncTimerActivity();
+    }
+
+    resumeTimer() {
         this.timerInterval = window.setInterval(() => {
             const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
             if (this.timerEl) {
                 this.timerEl.textContent = formatTime(elapsed);
             }
         }, 1000);
+    }
+
+    syncTimerActivity() {
+        if (!this.startTime || this.isSolved || this.gameOver || this.boardEl.classList.contains("loading")) return;
+        if (!this.isActiveScreen() || document.hidden) {
+            if (this.timerPausedAt == null) this.timerPausedAt = Date.now();
+            this.stopTimer();
+        } else if (this.timerPausedAt != null) {
+            this.startTime += Date.now() - this.timerPausedAt;
+            this.timerPausedAt = null;
+            this.resumeTimer();
+        }
     }
 
     stopTimer() {
@@ -729,6 +764,9 @@ class SudokuGame {
     }
 
     startNewGame(abandonMode = this.mode) {
+        this.history = [];
+        this.updatePuzzleActions();
+        this.setPuzzleFeedback("Select a cell to see its candidates. Notes follow the visible board rules.");
         if (!this.isSolved && !this.gameOver && this.hasUserProgress()) {
             this.stats.currentStreak = 0;
             const modeStats = this.stats.modeStats[abandonMode] || this.stats.modeStats[this.mode];
@@ -750,7 +788,8 @@ class SudokuGame {
         this.setOverlayContent("Puzzle Solved", "Need another challenge? Spin up a fresh grid.", "Keep Playing");
 
         this.boardEl.classList.add("loading");
-        window.setTimeout(() => {
+        clearTimeout(this.generationTimer);
+        this.generationTimer = window.setTimeout(() => {
             this.generatePuzzle();
             this.boardEl.classList.remove("loading");
             this.setState("Solving");
@@ -868,6 +907,7 @@ class SudokuGame {
             for (let c = 0; c < SUDOKU_SIZE; c += 1) {
                 const cell = this.cells[r][c];
                 const value = this.userGrid[r][c];
+                cell.setAttribute("aria-label", `Row ${r + 1}, column ${c + 1}: ${value || "empty"}${this.given[r][c] ? ", clue" : ""}`);
                 const valueEl = this.valueEls[r][c];
                 valueEl.textContent = value ? String(value) : "";
                 cell.classList.toggle("has-value", value !== 0);
@@ -883,11 +923,105 @@ class SudokuGame {
                 }
             }
         }
+        this.updatePuzzleActions();
     }
 
     selectCell(r, c) {
         this.selected = { r, c };
+        this.cells.flat().forEach(cell => { cell.tabIndex = -1; });
+        this.cells[r][c].tabIndex = 0;
+        this.cells[r][c].focus({ preventScroll: true });
         this.updateHighlights();
+        this.describeCell();
+    }
+
+    setPuzzleFeedback(text, tone = "") {
+        if (!this.feedbackEl) return;
+        this.feedbackEl.textContent = text;
+        this.feedbackEl.dataset.tone = tone;
+    }
+
+    remember() {
+        this.history.push({ grid: cloneGrid(this.userGrid), notes: this.notes.map(row => row.map(cell => cell.slice())),
+            given: cloneGrid(this.given), hinted: cloneGrid(this.hinted), selected: this.selected ? { ...this.selected } : null });
+        if (this.history.length > 100) this.history.shift();
+    }
+
+    updatePuzzleActions() {
+        if (this.undoBtn) this.undoBtn.disabled = !this.history.length || this.isSolved || this.gameOver;
+        if (this.candidatesBtn) this.candidatesBtn.disabled = this.isSolved || this.gameOver;
+    }
+
+    undo() {
+        if (!this.history.length || this.isSolved || this.gameOver || this.boardEl.classList.contains("loading")) return;
+        const previous = this.history.pop();
+        this.userGrid = previous.grid;
+        this.notes = previous.notes;
+        this.given = previous.given;
+        this.hinted = previous.hinted;
+        this.selected = previous.selected;
+        this.renderValues();
+        this.updateHighlights();
+        if (this.selected) this.selectCell(this.selected.r, this.selected.c);
+        this.setPuzzleFeedback("Last edit undone. Used hints and mistakes still count.");
+    }
+
+    peerConflict(r, c, value) {
+        if (!value) return "";
+        for (let i = 0; i < 9; i++) {
+            if (i !== c && this.userGrid[r][i] === value) return "row";
+            if (i !== r && this.userGrid[i][c] === value) return "column";
+        }
+        for (let rr = Math.floor(r / 3) * 3; rr < Math.floor(r / 3) * 3 + 3; rr++) {
+            for (let cc = Math.floor(c / 3) * 3; cc < Math.floor(c / 3) * 3 + 3; cc++) {
+                if ((rr !== r || cc !== c) && this.userGrid[rr][cc] === value) return "3 × 3 box";
+            }
+        }
+        const cage = this.mode === "killer" ? this.cages[this.cageMap[r][c] - 1] : null;
+        return cage?.cells.some(cell => (cell.r !== r || cell.c !== c) && this.userGrid[cell.r][cell.c] === value) ? "cage" : "";
+    }
+
+    candidatesFor(r, c) {
+        const cage = this.mode === "killer" ? this.cages[this.cageMap[r][c] - 1] : null;
+        return Array.from({ length: 9 }, (_, i) => i + 1).filter(value => {
+            if (this.peerConflict(r, c, value)) return false;
+            if (!cage) return true;
+            const other = cage.cells.filter(cell => cell.r !== r || cell.c !== c).map(cell => this.userGrid[cell.r][cell.c]);
+            const sum = other.reduce((total, n) => total + n, value);
+            const empty = other.filter(n => !n).length;
+            const available = Array.from({ length: 9 }, (_, i) => i + 1).filter(n => n !== value && !other.includes(n));
+            return sum + available.slice(0, empty).reduce((a, b) => a + b, 0) <= cage.sum &&
+                sum + (empty ? available.slice(-empty) : []).reduce((a, b) => a + b, 0) >= cage.sum;
+        });
+    }
+
+    describeCell() {
+        if (!this.selected) return;
+        const { r, c } = this.selected;
+        const value = this.userGrid[r][c];
+        const conflict = this.peerConflict(r, c, value);
+        if (conflict) this.setPuzzleFeedback(`${value} already appears in this ${conflict}. Erase or undo the conflicting entry.`, "warning");
+        else if (value && this.autoCheck && value !== this.solution[r][c]) this.setPuzzleFeedback(`R${r + 1}C${c + 1}: ${value} does not fit this puzzle. Try another number.`, "warning");
+        else if (value) this.setPuzzleFeedback(`R${r + 1}C${c + 1}: ${value}${this.given[r][c] ? " is a fixed clue." : " is entered."}`);
+        else {
+            const candidates = this.candidatesFor(r, c);
+            this.setPuzzleFeedback(candidates.length ? `R${r + 1}C${c + 1} candidates: ${candidates.join(" · ")}` : "No candidate fits here. Check the nearby entries.", candidates.length ? "" : "warning");
+        }
+    }
+
+    fillCandidateNotes() {
+        if (this.gameOver || this.isSolved || this.boardEl.classList.contains("loading")) return;
+        this.remember();
+        let count = 0;
+        for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) {
+            if (this.userGrid[r][c]) continue;
+            const candidates = this.candidatesFor(r, c);
+            this.notes[r][c] = Array.from({ length: 10 }, (_, n) => n > 0 && candidates.includes(n));
+            count++;
+        }
+        this.renderValues();
+        this.setPuzzleFeedback(`Pencil notes added to ${count} empty cells using the visible board rules.`);
+        if (this.selected) this.cells[this.selected.r][this.selected.c].focus({ preventScroll: true });
     }
 
     moveSelection(dr, dc) {
@@ -928,6 +1062,10 @@ class SudokuGame {
                 this.notes[row][col][value] = false;
             }
         }
+        if (this.mode === "killer") {
+            const cage = this.cages[this.cageMap[r][c] - 1];
+            cage?.cells.forEach(cell => { this.notes[cell.r][cell.c][value] = false; });
+        }
     }
 
     toggleNote(value) {
@@ -936,15 +1074,17 @@ class SudokuGame {
         if (this.given[r][c]) return;
         if (this.userGrid[r][c] !== 0) return;
 
+        this.remember();
         const notes = this.notes[r][c];
         notes[value] = !notes[value];
         this.renderValues();
         this.flashCell(r, c);
         this.updateHighlights();
+        this.cells[r][c].focus({ preventScroll: true });
     }
 
     inputNumber(value) {
-        if (this.gameOver) return;
+        if (this.gameOver || this.isSolved || this.boardEl.classList.contains("loading")) return;
         if (!this.selected) return;
         const { r, c } = this.selected;
         if (this.given[r][c]) return;
@@ -957,6 +1097,7 @@ class SudokuGame {
         const prev = this.userGrid[r][c];
         if (prev === value) return;
 
+        this.remember();
         this.userGrid[r][c] = value;
         if (value !== 0) {
             this.clearNotesForCell(r, c);
@@ -970,34 +1111,44 @@ class SudokuGame {
         this.flashCell(r, c);
         this.updateHighlights();
         this.checkSolved();
+        this.updatePuzzleActions();
+        this.describeCell();
+        window.ArcadeFeedback?.play(!this.autoCheck || value === this.solution[r][c] ? "move" : "hit");
+        this.cells[r][c].focus({ preventScroll: true });
     }
 
     clearSelected() {
-        if (this.gameOver) return;
+        if (this.gameOver || this.isSolved || this.boardEl.classList.contains("loading")) return;
         if (!this.selected) return;
         const { r, c } = this.selected;
         if (this.given[r][c]) return;
         const notes = this.notes[r][c];
         const hasNotes = notes.some((value, index) => index > 0 && value);
         if (this.userGrid[r][c] === 0 && !hasNotes) return;
+        this.remember();
         this.userGrid[r][c] = 0;
         this.clearNotesForCell(r, c);
         this.renderValues();
         this.updateHighlights();
+        this.describeCell();
+        this.cells[r][c].focus({ preventScroll: true });
     }
 
     giveHint() {
-        if (this.gameOver) return;
+        if (this.gameOver || this.isSolved || this.boardEl.classList.contains("loading")) return;
         const empties = [];
         for (let r = 0; r < SUDOKU_SIZE; r += 1) {
             for (let c = 0; c < SUDOKU_SIZE; c += 1) {
-                if (this.userGrid[r][c] === 0) {
+                if (!this.given[r][c] && this.userGrid[r][c] !== this.solution[r][c]) {
                     empties.push({ r, c });
                 }
             }
         }
         if (empties.length === 0) return;
-        const choice = randomChoice(empties);
+        const selected = this.selected && empties.find(cell => cell.r === this.selected.r && cell.c === this.selected.c);
+        const choice = selected || empties.sort((a, b) => this.candidatesFor(a.r, a.c).length - this.candidatesFor(b.r, b.c).length)[0];
+        const candidates = this.candidatesFor(choice.r, choice.c);
+        this.remember();
         this.userGrid[choice.r][choice.c] = this.solution[choice.r][choice.c];
         this.given[choice.r][choice.c] = 1;
         this.hinted[choice.r][choice.c] = 1;
@@ -1009,6 +1160,9 @@ class SudokuGame {
         this.flashCell(choice.r, choice.c);
         this.updateHighlights();
         this.checkSolved();
+        this.updatePuzzleActions();
+        this.selectCell(choice.r, choice.c);
+        this.setPuzzleFeedback(`R${choice.r + 1}C${choice.c + 1} = ${this.solution[choice.r][choice.c]}. ${candidates.length === 1 && candidates[0] === this.solution[choice.r][choice.c] ? "Only one candidate fits this cell." : "This cell has been revealed for you."}`, "success");
     }
 
     flashCell(r, c) {
@@ -1159,6 +1313,7 @@ class SudokuGame {
                 cell.classList.toggle("selected", isSelected);
                 cell.classList.toggle("peer", isPeer);
                 cell.classList.toggle("same-value", sameValue);
+                cell.classList.toggle("rule-conflict", Boolean(value && this.peerConflict(r, c, value)));
 
                 const isWrong = showErrors && value !== 0 && value !== this.solution[r][c];
                 cell.classList.toggle("error", isWrong);
@@ -1193,6 +1348,7 @@ class SudokuGame {
         }
         const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
         this.isSolved = true;
+        window.ArcadeFeedback?.play("win");
         this.setState("Solved");
         this.setOverlayContent(
             "Puzzle Solved",
@@ -1210,4 +1366,17 @@ function initSudokuGame() {
     if (!board) return;
     if (window.__sudokuGameInstance) return;
     window.__sudokuGameInstance = new SudokuGame();
+}
+
+{
+    const previous = window.render_game_to_text;
+    window.render_game_to_text = () => {
+        const game = window.__sudokuGameInstance;
+        if (document.body.dataset.game !== "sudoku" || !game) return typeof previous === "function" ? previous() : JSON.stringify({ game: document.body.dataset.game });
+        return JSON.stringify({ game: "sudoku", mode: game.mode, difficulty: game.difficulty, board: game.userGrid,
+            selected: game.selected, notes: game.notes.map(row => row.map(cell => cell.flatMap((on, n) => on && n ? [n] : []))),
+            mistakes: game.mistakes, hintsUsed: game.hintsUsed, noteMode: game.noteMode, undoAvailable: game.history.length,
+            solved: game.isSolved, gameOver: game.gameOver, feedback: game.feedbackEl?.textContent,
+            coordinateSystem: "board[row][column], zero-based from top left" });
+    };
 }

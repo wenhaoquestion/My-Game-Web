@@ -116,8 +116,10 @@
                 ['importScripts("https://cdn.jsdelivr.net/npm/stockfish.js@10.0.2/stockfish.js");'],
                 { type: "text/javascript" }
             );
-            sfWorker = new Worker(URL.createObjectURL(blob));
+            const worker = new Worker(URL.createObjectURL(blob));
+            sfWorker = worker;
             sfWorker.onmessage = function (e) {
+                if (worker !== sfWorker) return;
                 const line = typeof e.data === "string" ? e.data : "";
                 if (line === "uciok") {
                     sfWorker.postMessage("setoption name Hash value 32");
@@ -138,7 +140,15 @@
                     }
                 }
             };
-            sfWorker.onerror = function () { sfWorker = null; sfReady = false; };
+            sfWorker.onerror = function () {
+                if (worker !== sfWorker) return;
+                const pendingMove = Boolean(sfCallback);
+                sfCallback = null;
+                sfWorker = null;
+                sfReady = false;
+                aiThinking = false;
+                if (pendingMove && !gameOver && currentTurn === BLACK) scheduleAI();
+            };
             sfWorker.postMessage("uci");
         } catch (err) {
             sfWorker = null;
@@ -187,6 +197,10 @@
     let fullMoveNumber;
     let promotionPending; // {row, col, color} or null
     let aiThinking;
+    let gameVersion = 0;
+    let aiTimer = null;
+    let undoStack = [];
+    let hintMove = null;
 
     // ─── Init / Reset ─────────────────────────────────────────────────────────
     function initBoard() {
@@ -221,6 +235,8 @@
         fullMoveNumber = 1;
         promotionPending = null;
         aiThinking = false;
+        undoStack = [];
+        hintMove = null;
 
         recordPosition();
         updateUI();
@@ -246,8 +262,9 @@
             if (r < 7) fen += "/";
         }
         fen += " " + currentTurn;
-        fen += " " + (castlingRights.w.K ? "K" : "") + (castlingRights.w.Q ? "Q" : "")
+        const rights = (castlingRights.w.K ? "K" : "") + (castlingRights.w.Q ? "Q" : "")
                    + (castlingRights.b.K ? "k" : "") + (castlingRights.b.Q ? "q" : "");
+        fen += " " + (rights || "-");
         fen += " " + (enPassantTarget ? String.fromCharCode(97 + enPassantTarget.col) + (8 - enPassantTarget.row) : "-");
         return fen;
     }
@@ -590,6 +607,8 @@
         }
 
         // Actually apply
+        undoStack.push(snapshot());
+        hintMove = null;
         const res = applyMove(board, move, castlingRights, enPassantTarget);
         board = res.board;
         castlingRights = res.castlingRights;
@@ -654,6 +673,8 @@
 
         updateUI();
         render();
+        setCoach(`${sqToAlg(move.from.row, move.from.col)} → ${sqToAlg(move.to.row, move.to.col)}${isCapture ? " · capture" : ""}. ${gameOver ? "Game finished. Undo to review the position." : isInCheck(board, currentTurn) ? "The king is in check." : "Select a piece to see its legal moves."}`);
+        window.ArcadeFeedback?.play(gameOver ? "win" : isCapture ? "score" : "move");
 
         // AI turn
         if (!gameOver && gameMode === "pve" && currentTurn === BLACK) {
@@ -808,14 +829,18 @@
     }
 
     function scheduleAI() {
-        if (aiThinking) return;
+        if (aiThinking || !isActive() || gameOver || gameMode !== "pve" || currentTurn !== BLACK) return;
+        const version = gameVersion;
         aiThinking = true;
         updateStatus("AI is thinking...");
+        updateTools();
+        if (aiDifficulty === "hard" && !sfWorker) initStockfish();
 
         // Hard mode: use Stockfish engine when available
         if (aiDifficulty === "hard" && sfWorker && sfReady) {
             const fen = boardToFullFEN();
             sfCallback = function (uci) {
+                if (version !== gameVersion || gameOver || currentTurn !== BLACK || !isActive()) return;
                 aiThinking = false;
                 const move = uciToLegalMove(uci);
                 if (move) {
@@ -832,7 +857,9 @@
         }
 
         // Easy / Medium: use local minimax
-        setTimeout(() => {
+        aiTimer = setTimeout(() => {
+            aiTimer = null;
+            if (version !== gameVersion || gameOver || currentTurn !== BLACK || !isActive()) return;
             const move = getBestMove();
             aiThinking = false;
             if (move) executeMove(move, true);
@@ -884,6 +911,10 @@
         if (lastMove) {
             highlightSquare(lastMove.from.row, lastMove.from.col, COLORS.lastMoveSq);
             highlightSquare(lastMove.to.row, lastMove.to.col, COLORS.lastMoveSq);
+        }
+        if (hintMove) {
+            highlightSquare(hintMove.from.row, hintMove.from.col, "#d9fa7150");
+            highlightSquare(hintMove.to.row, hintMove.to.col, "#d9fa7190");
         }
 
         // King in check
@@ -1089,6 +1120,7 @@
 
     // ─── Input Handling ───────────────────────────────────────────────────────
     function onCanvasClick(e) {
+        if (!isActive()) return;
         const rect = canvas.getBoundingClientRect();
         const scaleX = CANVAS_SIZE / rect.width;
         const scaleY = CANVAS_SIZE / rect.height;
@@ -1117,6 +1149,7 @@
     }
 
     function handleSquareClick(row, col) {
+        hintMove = null;
         // If a piece is selected, try to move
         if (selectedSq) {
             // Find matching legal move
@@ -1138,6 +1171,7 @@
                         _zones: null,
                     };
                     render();
+                    updateTools();
                     return;
                 }
                 // Single move
@@ -1177,6 +1211,9 @@
     }
 
     function updateUI() {
+        updateMoveHistory();
+        updateCaptured();
+        updateTools();
         if (gameOver) return;
 
         const inCheck = isInCheck(board, currentTurn);
@@ -1188,6 +1225,102 @@
 
         updateMoveHistory();
         updateCaptured();
+    }
+
+    function snapshot() {
+        return JSON.parse(JSON.stringify({ board, currentTurn, enPassantTarget, castlingRights, gameOver,
+            lastMove, moveHistory, capturedByWhite, capturedByBlack, positionHistory, halfMoveClock, fullMoveNumber }));
+    }
+
+    function cancelAI() {
+        gameVersion++;
+        clearTimeout(aiTimer);
+        aiTimer = null;
+        aiThinking = false;
+        if (sfCallback && sfWorker) {
+            sfWorker.terminate();
+            sfWorker = null;
+            sfReady = false;
+        }
+        sfCallback = null;
+    }
+
+    function isActive() {
+        return !document.hidden && document.body.dataset.gameHelp !== "open" && document.getElementById("chess-screen")?.classList.contains("active");
+    }
+
+    function syncActivity() {
+        if (!isActive()) cancelAI();
+        else if (!gameOver && gameMode === "pve" && currentTurn === BLACK) scheduleAI();
+        updateTools();
+    }
+
+    function setCoach(text) {
+        const el = document.getElementById("chess-coach");
+        if (el) el.textContent = text;
+    }
+
+    function updateTools() {
+        const undo = document.getElementById("chess-undo-btn");
+        const hint = document.getElementById("chess-hint-btn");
+        if (undo) undo.disabled = !undoStack.length && !promotionPending;
+        if (hint) hint.disabled = gameOver || aiThinking || Boolean(promotionPending) || (gameMode === "pve" && currentTurn !== WHITE);
+    }
+
+    function undoMove() {
+        if (promotionPending) {
+            promotionPending = null;
+            selectedSq = null;
+            legalMovesCache = [];
+            updateTools();
+            render();
+            setCoach("Promotion cancelled. Choose your move again.");
+            return;
+        }
+        if (!undoStack.length) return;
+        cancelAI();
+        let previous = undoStack.pop();
+        if (gameMode === "pve" && previous.currentTurn === BLACK && undoStack.length) previous = undoStack.pop();
+        ({ board, currentTurn, enPassantTarget, castlingRights, gameOver, lastMove, moveHistory,
+            capturedByWhite, capturedByBlack, positionHistory, halfMoveClock, fullMoveNumber } = previous);
+        selectedSq = null;
+        legalMovesCache = [];
+        hintMove = null;
+        hideOverlay();
+        updateUI();
+        render();
+        setCoach(gameMode === "pve" ? "Your turn restored, including the AI reply. Try a different move." : "Last move undone. Board, captures and special move rights restored.");
+    }
+
+    function showHint() {
+        if (!isActive() || gameOver || aiThinking || promotionPending || (gameMode === "pve" && currentTurn !== WHITE)) return;
+        const candidates = allLegalMoves(board, currentTurn, enPassantTarget, castlingRights).filter(move => !move.promotion || move.promotion === QUEEN);
+        if (!candidates.length) return;
+        const maximizing = currentTurn === WHITE;
+        const deadline = performance.now() + 140;
+        let best = candidates[0], bestScore = maximizing ? -Infinity : Infinity;
+        for (const move of candidates) {
+            const next = applyMove(board, move, castlingRights, enPassantTarget);
+            let score = evaluateBoard(next.board);
+            const replies = allLegalMoves(next.board, maximizing ? BLACK : WHITE, next.enPassantTarget, next.castlingRights);
+            if (!replies.length && isInCheck(next.board, maximizing ? BLACK : WHITE)) score = maximizing ? 100000 : -100000;
+            else if (replies.length) {
+                score = maximizing ? Infinity : -Infinity;
+                for (const reply of replies) {
+                    const after = applyMove(next.board, reply, next.castlingRights, next.enPassantTarget);
+                    const value = evaluateBoard(after.board);
+                    score = maximizing ? Math.min(score, value) : Math.max(score, value);
+                    if (performance.now() > deadline) break;
+                }
+            }
+            if (maximizing ? score > bestScore : score < bestScore) { bestScore = score; best = move; }
+            if (performance.now() > deadline) break;
+        }
+        hintMove = best;
+        selectedSq = { ...best.from };
+        legalMovesCache = legalMovesFor(best.from.row, best.from.col, board, enPassantTarget, castlingRights);
+        setCoach(`Consider ${sqToAlg(best.from.row, best.from.col)} → ${sqToAlg(best.to.row, best.to.col)}. The highlighted destination is legal; choose when you are ready.`);
+        render();
     }
 
     function updateMoveHistory() {
@@ -1226,12 +1359,14 @@
 
     // ─── Controls ─────────────────────────────────────────────────────────────
     function newGame() {
+        cancelAI();
         hideOverlay();
         const modeEl = document.getElementById("chess-mode-select");
         const diffEl = document.getElementById("chess-difficulty-select");
         gameMode = modeEl ? modeEl.value : "pve";
         aiDifficulty = diffEl ? diffEl.value : "medium";
         initBoard();
+        setCoach("Select a piece to see legal destinations. Hint suggests a move; Undo lets you explore.");
     }
 
     // ─── Public Init ──────────────────────────────────────────────────────────
@@ -1247,6 +1382,9 @@
         ctx = canvas.getContext("2d");
 
         canvas.addEventListener("click", onCanvasClick);
+        document.getElementById("chess-undo-btn")?.addEventListener("click", undoMove);
+        document.getElementById("chess-hint-btn")?.addEventListener("click", showHint);
+        ["arcade:screenchange", "visibilitychange", "arcade:pause", "arcade:helpclose"].forEach(name => document.addEventListener(name, syncActivity));
 
         // New Game button
         const newGameBtn = document.getElementById("chess-newgame-btn");
@@ -1259,10 +1397,18 @@
         // Mode/difficulty changes
         const modeEl = document.getElementById("chess-mode-select");
         const diffEl = document.getElementById("chess-difficulty-select");
-        if (modeEl) modeEl.addEventListener("change", () => { /* no auto-restart */ });
-        if (diffEl) diffEl.addEventListener("change", () => { /* no auto-restart */ });
+        if (modeEl) modeEl.addEventListener("change", newGame);
+        if (diffEl) diffEl.addEventListener("change", () => { aiDifficulty = diffEl.value; });
 
         newGame();
     };
+
+    const previousText = window.render_game_to_text;
+    window.render_game_to_text = () => document.body.dataset.game === "chess" && board
+        ? JSON.stringify({ game: "chess", ...snapshot(), fen: boardToFullFEN(), mode: gameMode, aiThinking,
+            hint: hintMove, selected: selectedSq, legalDestinations: legalMovesCache, undoAvailable: undoStack.length,
+            promotionPending: promotionPending ? { move: promotionPending.move, choices: promotionPending._zones } : null,
+            coordinateSystem: "row 0 = rank 8, column 0 = file a" })
+        : typeof previousText === "function" ? previousText() : JSON.stringify({ game: document.body.dataset.game });
 
 })();

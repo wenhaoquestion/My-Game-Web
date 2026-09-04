@@ -1,150 +1,88 @@
-# Wenhao's Web Arcade
+# Wenhao’s Arcade
 
-A browser-based arcade featuring 10 games with a neon cyberpunk aesthetic, responsive design, and powerful AI opponents. Play directly at **https://wenhaoquestion.github.io/My-Game-Web/** or open `index.html` locally — no installation required.
+A collection of 12 browser games and tools. A quiet, image-led library with instant search, favorites, recently played games and responsive game screens.
 
----
+[Play on GitHub Pages](https://wenhaoquestion.github.io/My-Game-Web/)
 
-## Games
+## Run locally
 
-| Game | Mode | AI |
-|------|------|----|
-| Snake | Solo | — |
-| 2048 | Solo | — |
-| Tetris | Solo / AI Auto-play | El-Tetris heuristic |
-| Sudoku | Solo | — |
-| Coin Toss | Solo | — |
-| Texas Hold'em Odds | Calculator | Monte Carlo |
-| Space Shooter | Solo | — |
-| Gomoku | PvP / PvE | Minimax + alpha-beta |
-| Xiangqi (Chinese Chess) | PvP / PvE | Minimax + alpha-beta + quiescence |
-| International Chess | PvP / PvE | Minimax + alpha-beta + quiescence |
+Requires Python 3 to serve the site. There is no build step and no production dependency to install.
 
----
-
-## How to Play
-
-### Launch locally
-```bash
-git clone https://github.com/wenhaoquestion/My-Game-Web.git
-cd My-Game-Web
-python -m http.server 8000   # or open index.html directly
+```sh
+python3 -m http.server 8000 --bind 127.0.0.1
 ```
 
-### Navigation
-- Click a game card on the main menu to enter that game
-- Click **← Back** (top-left of any game screen) to return to the menu
-- Use the **theme swatches** (top-right) to switch between 5 colour themes: Nebula, Solaris, Aqua Rift, Ember, Verdant
-- Toggle **Aura** to enable/disable the ambient background glow
+Open **http://127.0.0.1:8000**. You can also run `npm run dev` with Node.js installed. Opening `index.html` directly works for the core games, but the local server is recommended for the helper’s background solver and optional OCR.
 
----
+## Find your next game
 
-## Controls
+- Search by English or Chinese game name.
+- Filter Arcade, Puzzle, Strategy or Tools.
+- Use the heart on a cover to save a favorite.
+- Recently played lists the games you opened, most recent first. It is a history of launches, not a saved-game system.
+- Game links such as `#/tetris` and `#/ten-helper` can be bookmarked or shared.
+- Browser back/forward and **All games** return you to the library.
+- Five color themes and the optional Aura effect are available in the header.
+- Every activity has a How to play guide, fullscreen mode where supported, and optional sound feedback. Sound starts off and remembers your preference.
 
-### Snake
-| Key | Action |
-|-----|--------|
-| Arrow keys / WASD | Steer |
+Favorites, recent games, themes and supported high scores are stored in this browser. If browser storage is unavailable, the site remains playable with session-only library preferences. Game scripts load only when opened and are reused on subsequent visits.
 
-### 2048
-| Key | Action |
-|-----|--------|
-| Arrow keys | Slide tiles |
+## Collection
 
-### Tetris
-| Key | Action |
-|-----|--------|
-| Arrow Left / A | Move left |
-| Arrow Right / D | Move right |
-| Arrow Down / S | Soft drop |
-| Arrow Up / W / E | Rotate clockwise |
-| Q | Rotate counter-clockwise |
-| Space | Hard drop |
-| Shift / C | Hold piece |
-| P | Pause |
-| **B** | **Toggle AI auto-play** |
+| Game or tool | Features | Controls |
+|---|---|---|
+| Neon Snake | Four arenas, buffered turns, fruit bonuses, countdown and results | Arrow keys / WASD, Esc pause; swipe or direction pad |
+| Prismatic Tetris | Four modes, combos, wall/floor kicks, mode records and AI practice | Arrows / WASD, Q/E rotate, Space hard drop, Shift/C hold, P/Esc pause, B AI; touch buttons |
+| 2048 Puzzle | Adjustable boards, undo, automatic save and resume | Arrow keys / WASD or swipe; U undo |
+| Prism Sudoku | Classic and Killer, candidate notes, undo and selected-cell hints | Select a cell, 1–9 to enter, Backspace to erase; on-screen keypad |
+| Neon Shooter | Five sectors, bosses, endless waves, chains and sector repairs | Drag to steer or Arrows / A/D; auto-fire, Space shoot, Shift bomb, P pause; touch buttons |
+| Merge 10 · 合成10 | Custom countdown, Clear Race, highlighted hints, undo and stuck-board feedback | Drag a sum-10 rectangle, or use arrows and Enter to select corners |
+| Lucky Coin Toss | Free play and ten-flip prediction challenge, streaks and history | Choose a prediction, then Flip or Space |
+| Chess | Full rules, three AI levels, full-position undo and legal hints | Select a piece, then a legal destination; tools below board |
+| Five in a Row | Local two-player or AI, undo, win/block hints and threat readout | Select an intersection; tools below board |
+| Chinese Chess | Local two-player or AI, full-position undo, legal hints and move history | Select a piece, then a legal destination; tools below board |
+| Texas Hold’em Odds | Cancellable Monte Carlo equity calculation with progress | Choose your hand and board, set opponents, calculate |
+| Merge 10 Solver | Editable board, OCR, background solver, playback and export | Enter/import a board, Solve, then Next or Play |
 
-Tetris modes: **Marathon** (150 lines), **Sprint** (40 lines), **Ultra** (120 s), **Gauntlet** (continuous garbage).
-Stages (Aurora → Storm → Neon Pulse → Void Wells) increase gravity and garbage pressure.
+Realtime games pause or stop updating when you leave their screen. Board AI tasks and helper playback are invalidated when a game or board is replaced. The helper solves in a Web Worker when supported so navigation remains responsive.
 
-### Chess & Xiangqi
-- Click a piece to select (legal moves highlight)
-- Click a highlighted square to move
-- Choose Easy / Medium / Hard before starting a PvE game
+Opening instructions pauses active play. Realtime games require an explicit resume; Sudoku resumes its clock when the guide closes. Tetris AI practice and assisted Merge 10 runs do not overwrite unassisted records. Undo does not refund Merge 10 time or Sudoku hint/mistake counters. Chess and Xiangqi hints use a short legal search and are suggestions, not guaranteed best moves.
 
-### Sudoku
-- Click a cell, then type 1–9 or use the on-screen numpad
-- **Hint** reveals one cell, **Check** validates, **Solve** auto-completes
+## Project structure
 
-### Texas Hold'em Odds
-1. Select a slot (Hero Hand or Board card)
-2. Click a card in the deck to assign it
-3. Set opponents and simulation iterations
-4. Click **Calculate** — equity is computed via Monte Carlo simulation
-
----
-
-## AI Technical Details
-
-### Chess AI
-- **Algorithm**: Minimax with alpha-beta pruning
-- **Quiescence search**: After the depth limit, captures and promotions are searched further until a quiet position is reached — eliminates tactical blunders at the search horizon
-- **Move ordering**: MVV-LVA (Most Valuable Victim – Least Valuable Attacker) maximises alpha-beta cutoffs
-- **Evaluation**: Material values (Pawn=100, Knight=320, Bishop=330, Rook=500, Queen=900) + piece-square tables for all six piece types
-- **Depths**: Easy = random move, Medium = 3 plies + quiescence, Hard = 4 plies + quiescence
-
-### Xiangqi AI
-- Same minimax + alpha-beta + quiescence architecture as Chess
-- **Evaluation**: Xiangqi piece values (General=6000, Chariot=600, Cannon=285, Horse=270, Soldier=30, …) + positional bonus tables
-- **Depths**: Easy = 1 ply, Medium = 3 plies + quiescence, Hard = 4 plies + quiescence
-
-### Tetris AI (press **B** to toggle)
-- Implements the **Dellacherie / El-Tetris heuristic**: every possible placement of the current piece (all rotations × all columns) is scored by four board features:
-  - Aggregate height × −0.510 (prefer low boards)
-  - Complete lines × +0.761 (reward line clears)
-  - Holes × −0.357 (penalise gaps under filled cells)
-  - Bumpiness × −0.184 (penalise uneven column heights)
-- The highest-scoring placement is chosen and the piece is instantly dropped there
-
----
-
-## Themes
-
-| Theme | Accent |
-|-------|--------|
-| Nebula | Ice blue |
-| Solaris | Gold |
-| Aqua Rift | Cyan |
-| Ember | Coral |
-| Verdant | Green |
-
-Theme preference is saved to `localStorage` and restored on reload.
-
----
-
-## File Structure
-
-```
-index.html    — Single-page app, all 10 game screens
-style.css     — Global styles, CSS themes, responsive layout
-main.js       — Screen switching, theme/ambient controls
-
-snake.js      — Snake game
-2048.js       — 2048 tile game
-tetris.js     — Prismatic Tetris + El-Tetris AI
-sudoku.js     — Sudoku generator, solver, UI
-coin.js       — Coin toss simulator
-poker.js      — Texas Hold'em Monte Carlo equity calculator
-shooter.js    — Space shooter
-gomoku.js     — Gomoku (five-in-a-row)
-xiangqi.js    — Chinese Chess with minimax AI
-chess.js      — International Chess with minimax + quiescence AI
+```text
+index.html         Semantic shell and game screens
+catalog.js         Titles, categories, covers, routes and initializer metadata
+main.js            Library rendering, routing, lazy loading and preferences
+game-experience.js  Instructions, fullscreen and opt-in synthesized sound
+ambient.js         Optional motion effect, suspended when the tab is hidden
+style.css          Game-specific boards, tiles and effects
+styles/shell.css   Design tokens, header, library and responsive layout
+styles/games.css   Shared game chrome, controls and mobile adjustments
+styles/*-play.css  Controls and layouts for each family of games
+assets/            Optimized WebP feature/cover artwork and SVG favicon
+*.js               Independent game engines (merge10.js also owns the helper)
+scripts/check.mjs  Syntax and static asset/registry validation
 ```
 
----
+Keep game metadata in `catalog.js`. Each entry names its DOM screen, JavaScript file and global initialization function. The router calls an initializer once, after its screen is visible, and emits `arcade:screenchange` on `document` with `{ screenId, previousScreenId }`. Game modules use this event to suspend timers or cancel stale work. Shared instructions emit `arcade:pause` and `arcade:helpclose`. `ArcadeFeedback.play()` provides optional sound; game engines remain usable without it.
 
-## Tech Stack
+The UI uses neutral charcoal surfaces, readable type and theme accents defined in `styles/shell.css`. Shared gameplay controls belong in `styles/games.css`; individual board rendering stays with its game. Covers and the featured banner were created with OpenAI image generation and optimized to WebP (about 600 KB combined); no external image or font service is required.
 
-- Vanilla HTML5, CSS3, JavaScript (ES6+) — no frameworks, no build step
-- Canvas API for board rendering (Chess, Xiangqi, Tetris, Snake, Shooter)
-- CSS custom properties for real-time theming
-- `localStorage` for theme / ambient persistence
+## Checks
+
+```sh
+npm run check
+```
+
+The dependency-free check validates JavaScript syntax, unique HTML IDs, local asset references and each catalog entry’s screen and initializer. For a browser regression, verify search → filter → favorite → open → return, all 12 direct game links, theme persistence, blocked storage, background pauses, helper solve/cancel, and 390 px / 320 px layouts.
+
+## Deployment and optional network features
+
+Publish the repository root using GitHub Pages; no build output or server is required. Hash routes work under the repository subpath.
+
+The regular games, calculator and fast OCR run locally in the browser. **Deep OCR** downloads Tesseract.js and its worker/language data when requested, so that optional feature needs an internet connection. OCR results may need manual correction.
+
+## AI engines
+
+Chess and Xiangqi use minimax, alpha-beta pruning, move ordering and quiescence search. Gomoku uses minimax with alpha-beta pruning. Tetris autoplay evaluates board height, complete lines, holes and unevenness. Poker equity is estimated with Monte Carlo simulation.

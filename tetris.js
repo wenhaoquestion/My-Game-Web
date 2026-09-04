@@ -130,6 +130,7 @@ function drawRoundedRect(ctx, x, y, w, h, r) {
 class TetrisGame {
     constructor() {
         this.canvas = document.getElementById("tetris-canvas");
+        this.canvas.tabIndex = -1;
         this.ctx = this.canvas.getContext("2d");
 
         this.board = this.createBoard();
@@ -150,11 +151,21 @@ class TetrisGame {
         this.energy = 0;
         this.state = "idle"; // idle | playing | paused | over
         this.lockTimer = null;
+        this.aiTimer = null;
+        this.rafId = null;
+        this.pausedAt = null;
         this.timerStart = null;
         this.elapsed = 0;
         this.remainingTime = null;
 
         this.aiMode = false;
+        this.assisted = false;
+        this.heldInputs = new Map();
+        this.groundResets = 0;
+        this.lastClear = '';
+        this.clearUntil = 0;
+        this.best = 0;
+        this.records = new Map();
 
         this.ui = this.cacheUI();
         this.initStageOptions();
@@ -162,9 +173,16 @@ class TetrisGame {
         this.ui.stageLabel.textContent = this.stage.name;
         this.ui.modeLabel.textContent = MODES[this.mode].label;
         this.bindEvents();
+        const suspend = () => {
+            if ((!this.isActiveScreen() || document.hidden) && this.state === "playing") this.togglePause();
+        };
+        document.addEventListener("arcade:screenchange", suspend);
+        document.addEventListener("visibilitychange", suspend);
+        document.addEventListener('arcade:pause', () => { if (this.isActiveScreen() && this.state === 'playing') this.togglePause(); });
         this.draw();
         this.updateModifiers();
         this.updateUI();
+        this.showOverlay('Find your rhythm.', 'Clear full rows, use Hold to plan ahead, and follow the landing guide. Ready when you are.');
     }
 
     cacheUI() {
@@ -194,6 +212,9 @@ class TetrisGame {
             hold: document.getElementById("tetris-hold"),
             modifiers: document.getElementById("tetris-modifiers"),
             aiToggleBtn: document.getElementById("tetris-ai-btn"),
+            best: document.getElementById('tetris-best'),
+            feedback: document.getElementById('tetris-feedback'),
+            progress: document.getElementById('tetris-progress'),
         };
     }
 
@@ -213,12 +234,15 @@ class TetrisGame {
 
     bindEvents() {
         this.ui.modeSelect.addEventListener("change", () => {
+            if (this.state === 'playing' || this.state === 'paused') return;
             this.mode = this.ui.modeSelect.value;
             this.ui.modeLabel.textContent = MODES[this.mode].label;
             this.updateUI();
+            this.updateModifiers();
         });
 
         this.ui.stageSelect.addEventListener("change", () => {
+            if (this.state === 'playing' || this.state === 'paused') return;
             const chosen = STAGES.find((s) => s.id === this.ui.stageSelect.value);
             if (chosen) {
                 this.stage = chosen;
@@ -236,17 +260,24 @@ class TetrisGame {
         }
 
         window.addEventListener("keydown", (e) => {
-            if (!this.isActiveScreen()) return;
-            if (this.state !== "playing" && e.code !== "Space") {
-                if (this.state === "paused" && e.code === "Space") this.togglePause();
+            if (!this.isActiveScreen() || document.hidden) return;
+            if (e.target instanceof Element && e.target.closest("input, textarea, select, button, a, [role=\"button\"], [contenteditable=\"true\"]")) return;
+            if (["ArrowLeft", "ArrowRight", "ArrowDown", "ArrowUp", "Space"].includes(e.code)) e.preventDefault();
+            if (this.state === "paused") {
+                if (["Space", "KeyP", "Escape"].includes(e.code) && !e.repeat) this.togglePause();
                 return;
             }
+            if (this.state !== "playing") {
+                if (['Space', 'Enter'].includes(e.code) && !e.repeat) this.startGame();
+                return;
+            }
+            if (e.repeat) return;
             if (e.code === "ArrowLeft" || e.code === "KeyA") {
-                this.move(-1);
+                this.pressInput('left');
             } else if (e.code === "ArrowRight" || e.code === "KeyD") {
-                this.move(1);
+                this.pressInput('right');
             } else if (e.code === "ArrowDown" || e.code === "KeyS") {
-                this.softDrop();
+                this.pressInput('down');
             } else if (e.code === "ArrowUp" || e.code === "KeyW" || e.code === "KeyE") {
                 this.rotate(1);
             } else if (e.code === "KeyQ") {
@@ -260,12 +291,81 @@ class TetrisGame {
                 }
             } else if (e.code === "ShiftLeft" || e.code === "ShiftRight" || e.code === "KeyC") {
                 this.holdPiece();
-            } else if (e.code === "KeyP") {
-                this.togglePause();
+            } else if (e.code === "KeyP" || e.code === "Escape") {
+                if (!e.repeat) this.togglePause();
             } else if (e.code === "KeyB") {
                 this.toggleAI();
             }
         });
+        window.addEventListener('keyup', e => {
+            const action = { ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowDown: 'down', KeyS: 'down' }[e.code];
+            if (action) this.heldInputs.delete(action);
+        });
+        window.addEventListener('blur', () => {
+            this.heldInputs.clear();
+            if (this.state === 'playing') this.togglePause();
+        });
+        document.querySelectorAll('[data-tetris-action]').forEach(button => {
+            const action = button.dataset.tetrisAction;
+            button.addEventListener('pointerdown', e => {
+                if (this.state !== 'playing') return;
+                e.preventDefault();
+                button.setPointerCapture(e.pointerId);
+                this.canvas.focus({ preventScroll: true });
+                this.pressInput(action);
+            });
+            for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) button.addEventListener(type, () => this.heldInputs.delete(action));
+            button.addEventListener('click', e => { if (e.detail === 0) this.performAction(action); });
+        });
+    }
+
+    performAction(action) {
+        if (this.state !== 'playing' || this.aiMode) return;
+        if (action === 'left') this.move(-1);
+        if (action === 'right') this.move(1);
+        if (action === 'down') this.softDrop();
+        if (action === 'rotate') this.rotate(1);
+        if (action === 'reverse') this.rotate(-1);
+        if (action === 'hold') this.holdPiece();
+        if (action === 'drop') this.hardDrop();
+    }
+
+    pressInput(action) {
+        this.performAction(action);
+        if (['left', 'right', 'down'].includes(action)) this.heldInputs.set(action, performance.now() + (action === 'down' ? 35 : 150));
+    }
+
+    updateInput(now) {
+        for (const [action, nextAt] of this.heldInputs) {
+            if (now < nextAt) continue;
+            this.performAction(action);
+            this.heldInputs.set(action, now + (action === 'down' ? 35 : 45));
+        }
+    }
+
+    scheduleFrame() {
+        if (this.rafId !== null || this.state !== "playing") return;
+        this.rafId = requestAnimationFrame((timestamp) => {
+            this.rafId = null;
+            this.loop(timestamp);
+        });
+    }
+
+    stopAsyncWork() {
+        this.heldInputs.clear();
+        if (this.rafId !== null) cancelAnimationFrame(this.rafId);
+        this.rafId = null;
+        this.clearLockTimer();
+        clearTimeout(this.aiTimer);
+        this.aiTimer = null;
+    }
+
+    scheduleAI() {
+        clearTimeout(this.aiTimer);
+        this.aiTimer = setTimeout(() => {
+            this.aiTimer = null;
+            this.aiExecute();
+        }, 120);
     }
 
     isActiveScreen() {
@@ -274,9 +374,12 @@ class TetrisGame {
     }
 
     startGame() {
+        this.stopAsyncWork();
+        this.state = "idle";
+        this.pausedAt = null;
         this.board = this.createBoard();
         this.queue = randomBag();
-        this.spawnPiece();
+        this.current = null;
         this.hold = null;
         this.canHold = true;
         this.score = 0;
@@ -285,6 +388,9 @@ class TetrisGame {
         this.combo = 0;
         this.b2b = 0;
         this.energy = 0;
+        this.assisted = this.aiMode;
+        this.lastClear = '';
+        this.best = this.readBest();
         this.lastFall = performance.now();
         this.state = "playing";
         this.timerStart = performance.now();
@@ -293,9 +399,12 @@ class TetrisGame {
 
         this.applyStage();
         this.hideOverlay();
+        this.spawnPiece();
         this.updateUI();
         this.updateModifiers();
-        requestAnimationFrame((t) => this.loop(t));
+        if (this.isActiveScreen()) this.canvas.focus({ preventScroll: true });
+        if (window.innerWidth <= 760) this.canvas.closest('.tetris-playfield').scrollIntoView({ block: 'start', behavior: 'smooth' });
+        this.scheduleFrame();
     }
 
     applyStage() {
@@ -309,6 +418,7 @@ class TetrisGame {
         }
         const baseInterval = this.stage.garbageInterval ?? (this.mode === "gauntlet" ? 7000 : null);
         const interval = this.mode === "gauntlet" && baseInterval ? Math.max(4000, baseInterval - 3000) : baseInterval;
+        this.garbageInterval = interval;
         this.nextGarbageAt = interval ? performance.now() + interval : null;
     }
 
@@ -335,7 +445,7 @@ class TetrisGame {
     }
 
     spawnPiece() {
-        if (this.queue.length === 0) this.queue = randomBag();
+        if (this.queue.length < 7) this.queue.push(...randomBag());
         const type = this.queue.shift();
         const rotations = TETROMINOES[type];
         this.current = {
@@ -346,18 +456,20 @@ class TetrisGame {
             blocks: rotations,
         };
         this.canHold = true;
+        this.groundResets = 0;
         if (this.collides(this.current, this.current.x, this.current.y)) {
             this.gameOver();
         }
         this.drawPreview();
         this.drawHold();
         if (this.aiMode && this.state === "playing") {
-            setTimeout(() => this.aiExecute(), 120);
+            this.scheduleAI();
         }
     }
 
     holdPiece() {
         if (!this.canHold || !this.current) return;
+        this.clearLockTimer();
         const tmp = this.hold;
         this.hold = this.current.type;
         if (tmp) {
@@ -371,6 +483,7 @@ class TetrisGame {
     }
 
     spawnSpecific(type) {
+        this.groundResets = 0;
         const rotations = TETROMINOES[type];
         this.current = {
             type,
@@ -397,27 +510,41 @@ class TetrisGame {
     }
 
     move(dir) {
-        if (!this.current) return;
+        if (!this.current || this.state !== 'playing') return;
         const nx = this.current.x + dir;
         if (!this.collides(this.current, nx, this.current.y)) {
             this.current.x = nx;
-            this.clearLockTimer();
+            this.resetGroundLock();
             this.draw();
         }
     }
 
     rotate(dir) {
-        if (!this.current) return;
+        if (!this.current || this.state !== 'playing') return;
         const newRot = (this.current.rotation + dir + 4) % 4;
-        if (!this.collides(this.current, this.current.x, this.current.y, newRot)) {
+        // Small, collision-checked offsets make wall and floor rotations forgiving.
+        for (const [dx, dy] of [[0, 0], [-1, 0], [1, 0], [-2, 0], [2, 0], [0, -1], [-1, -1], [1, -1], [0, -2]]) {
+            if (this.collides(this.current, this.current.x + dx, this.current.y + dy, newRot)) continue;
+            this.current.x += dx;
+            this.current.y += dy;
             this.current.rotation = newRot;
-            this.clearLockTimer();
+            this.resetGroundLock();
+            window.ArcadeFeedback?.play('move');
             this.draw();
+            break;
         }
     }
 
+    resetGroundLock() {
+        if (this.lockTimer && this.groundResets < 15) {
+            this.groundResets++;
+            this.clearLockTimer();
+        }
+        if (this.current && this.collides(this.current, this.current.x, this.current.y + 1)) this.lockPiece();
+    }
+
     softDrop() {
-        if (!this.current) return;
+        if (!this.current || this.state !== 'playing') return;
         if (!this.collides(this.current, this.current.x, this.current.y + 1)) {
             this.current.y += 1;
             this.score += 1;
@@ -428,7 +555,7 @@ class TetrisGame {
     }
 
     hardDrop() {
-        if (!this.current) return;
+        if (!this.current || this.state !== 'playing') return;
         let dist = 0;
         while (!this.collides(this.current, this.current.x, this.current.y + 1)) {
             this.current.y += 1;
@@ -436,7 +563,8 @@ class TetrisGame {
         }
         this.score += dist * 2;
         this.clearLockTimer();
-        this.lockPiece();
+        this.lockPiece(true);
+        window.ArcadeFeedback?.play('score');
     }
 
     clearLockTimer() {
@@ -446,29 +574,35 @@ class TetrisGame {
         }
     }
 
-    lockPiece() {
-        if (!this.current) return;
+    lockPiece(immediate = false) {
+        if (!this.current || this.state !== "playing") return;
+        if (this.lockTimer && !immediate) return;
         this.clearLockTimer();
-        // Capture piece state now so the closure uses the correct piece
-        // even if this.current is reassigned before the timeout fires.
-        const lockedType = this.current.type;
-        const lockedRotation = this.current.rotation;
-        const lockedX = this.current.x;
-        const lockedY = this.current.y;
-        const lockedBlocks = this.current.blocks;
-        this.lockTimer = setTimeout(() => {
-            const shape = lockedBlocks[lockedRotation];
+        const piece = this.current;
+        const commit = () => {
+            this.lockTimer = null;
+            if (this.state !== "playing" || this.current !== piece) return;
+            if (!this.collides(piece, piece.x, piece.y + 1)) return;
+            const shape = piece.blocks[piece.rotation];
+            if (shape.some(([dx, dy]) => piece.y + dy < 0)) {
+                this.gameOver();
+                return;
+            }
             shape.forEach(([dx, dy]) => {
-                const x = lockedX + dx;
-                const y = lockedY + dy;
+                const x = piece.x + dx;
+                const y = piece.y + dy;
                 if (y >= 0 && y < BOARD_HEIGHT) {
-                    this.board[y][x] = { color: PIECE_COLORS[lockedType], type: lockedType };
+                    this.board[y][x] = { color: PIECE_COLORS[piece.type], type: piece.type };
                 }
             });
+            this.current = null;
             this.handleLines();
-            this.spawnPiece();
+            if (this.state === "playing") this.spawnPiece();
             this.draw();
-        }, LOCK_DELAY);
+            this.updateUI();
+        };
+        if (immediate) commit();
+        else this.lockTimer = setTimeout(commit, LOCK_DELAY);
     }
 
     handleLines() {
@@ -478,15 +612,12 @@ class TetrisGame {
         }
 
         if (filledRows.length > 0) {
-            // Sort descending so we remove from the bottom up — higher indices
-            // stay valid as we remove lower ones.
-            filledRows.sort((a, b) => b - a).forEach((row) => {
-                this.board.splice(row, 1);
-                this.board.unshift(Array(BOARD_WIDTH).fill(null));
-            });
+            // Filter first: unshifting between splices changes remaining row indices.
+            this.board = this.board.filter((_, row) => !filledRows.includes(row));
+            while (this.board.length < BOARD_HEIGHT) this.board.unshift(Array(BOARD_WIDTH).fill(null));
             this.lines += filledRows.length;
             const lineScore = [0, 100, 300, 500, 800][filledRows.length] || 1200;
-            const b2bBonus = filledRows.length >= 4 ? 1.5 : 1.0;
+            const b2bBonus = filledRows.length >= 4 && this.b2b > 0 ? 1.5 : 1.0;
             const comboBonus = this.combo > 0 ? 1 + this.combo * 0.12 : 1;
             this.score += Math.floor(lineScore * this.level * b2bBonus * comboBonus);
 
@@ -499,6 +630,9 @@ class TetrisGame {
             }
 
             this.combo += 1;
+            this.lastClear = `${['', 'Single', 'Double', 'Triple', 'Tetris!'][filledRows.length] || 'Clear!'}${this.combo > 1 ? ' · ' + this.combo + ' combo' : ''}`;
+            this.clearUntil = performance.now() + 1800;
+            window.ArcadeFeedback?.play(filledRows.length >= 2 ? 'combo' : 'score');
             this.flashBoard();
 
             if (this.energy >= 100) {
@@ -509,7 +643,7 @@ class TetrisGame {
         }
 
         this.level = 1 + Math.floor(this.lines / 10);
-        this.fallInterval = Math.max(150, this.stage.gravity - this.level * 40);
+        this.fallInterval = Math.max(120, this.stage.gravity - (this.level - 1) * 45 - (this.mode === 'gauntlet' ? 120 : 0));
 
         if (this.mode === "sprint" && this.lines >= MODES.sprint.goalLines) {
             this.victory("Sprint Complete!");
@@ -545,47 +679,72 @@ class TetrisGame {
     }
 
     addGarbageLine() {
+        if (this.board[0].some(Boolean)) { this.gameOver(); return; }
         const hole = Math.floor(Math.random() * BOARD_WIDTH);
         this.board.shift();
         const row = Array.from({ length: BOARD_WIDTH }, (_, i) => (i === hole ? null : { color: "#202035", type: "G" }));
         this.board.push(row);
+        if (this.current) {
+            this.current.y--;
+            if (this.collides(this.current, this.current.x, this.current.y)) this.gameOver();
+        }
     }
 
     togglePause() {
         if (this.state === "playing") {
             this.state = "paused";
+            this.pausedAt = performance.now();
+            this.stopAsyncWork();
+            this.updateUI();
             this.showOverlay("Paused", "Press Resume or Space to continue");
         } else if (this.state === "paused") {
             this.hideOverlay();
             this.state = "playing";
-            this.lastFall = performance.now();
-            requestAnimationFrame((t) => this.loop(t));
+            const now = performance.now();
+            const pausedFor = this.pausedAt === null ? 0 : now - this.pausedAt;
+            this.timerStart += pausedFor;
+            if (this.nextGarbageAt) this.nextGarbageAt += pausedFor;
+            this.pausedAt = null;
+            this.lastFall = now;
+            if (this.isActiveScreen()) this.canvas.focus({ preventScroll: true });
+            if (this.aiMode) this.scheduleAI();
+            this.updateUI();
+            this.scheduleFrame();
         }
     }
 
     resumeFromOverlay() {
         if (this.state === "paused") {
             this.togglePause();
-        } else if (this.state === "over") {
+        } else if (this.state === "over" || this.state === 'idle') {
             this.startGame();
         }
     }
 
     gameOver() {
         this.state = "over";
-        this.showOverlay("Game Over", "Play again and go for a higher score!");
+        this.stopAsyncWork();
+        this.finishRecord();
+        window.ArcadeFeedback?.play('lose');
+        this.showOverlay("One more round?", this.resultText());
+        this.updateUI();
     }
 
     victory(text) {
         this.state = "over";
-        this.showOverlay(text, "Click Restart to play again.");
+        this.stopAsyncWork();
+        this.finishRecord();
+        window.ArcadeFeedback?.play('win');
+        this.showOverlay(text, this.resultText());
+        this.updateUI();
     }
 
     showOverlay(title, desc) {
         this.ui.overlayTitle.textContent = title;
         this.ui.overlayDesc.textContent = desc;
-        this.ui.overlayPrimary.textContent = this.state === "over" ? "Restart" : "Resume";
+        this.ui.overlayPrimary.textContent = this.state === 'idle' ? 'Start game' : this.state === "over" ? "Play again" : "Resume";
         this.ui.overlaySecondary.textContent = "Restart";
+        this.ui.overlaySecondary.hidden = this.state !== 'paused';
         this.ui.overlay.classList.add("visible");
     }
 
@@ -595,21 +754,30 @@ class TetrisGame {
 
     loop(timestamp) {
         if (this.state !== "playing") return;
+        if (!this.isActiveScreen() || document.hidden) {
+            this.togglePause();
+            return;
+        }
+        this.updateInput(timestamp);
         const delta = timestamp - this.lastFall;
+        this.elapsed = Math.max(0, (timestamp - this.timerStart) / 1000);
 
         // timers
         if (this.mode === "ultra") {
             this.remainingTime = Math.max(0, MODES.ultra.timer - (timestamp - this.timerStart) / 1000);
             if (this.remainingTime === 0) {
                 this.victory("时间到！");
+                this.updateUI();
+                return;
             }
         } else {
             this.elapsed = (timestamp - this.timerStart) / 1000;
         }
 
-        if (this.stage.garbageInterval && this.nextGarbageAt && timestamp >= this.nextGarbageAt) {
+        if (this.garbageInterval && this.nextGarbageAt && timestamp >= this.nextGarbageAt) {
             this.addGarbageLine();
-            this.nextGarbageAt = timestamp + this.stage.garbageInterval;
+            this.nextGarbageAt = timestamp + this.garbageInterval;
+            if (this.state !== 'playing') return;
         }
 
         if (delta > this.fallInterval && this.current) {
@@ -624,7 +792,7 @@ class TetrisGame {
         }
 
         this.updateUI();
-        requestAnimationFrame((t) => this.loop(t));
+        this.scheduleFrame();
     }
 
     draw() {
@@ -732,11 +900,12 @@ class TetrisGame {
 
     toggleAI() {
         this.aiMode = !this.aiMode;
+        if (this.aiMode && ['playing', 'paused'].includes(this.state)) this.assisted = true;
         if (this.ui.aiToggleBtn) {
             this.ui.aiToggleBtn.textContent = this.aiMode ? "AI: ON" : "AI: OFF";
         }
         if (this.aiMode && this.state === "playing" && this.current) {
-            setTimeout(() => this.aiExecute(), 120);
+            this.scheduleAI();
         }
     }
 
@@ -838,28 +1007,22 @@ class TetrisGame {
         this.score += Math.max(0, y - origY) * 2;
         this.current.y = y;
 
-        // Lock immediately — bypasses the LOCK_DELAY timer.
-        // The timer-based lockPiece() gets reset by the game loop every fallInterval ms,
-        // so at high speeds (fallInterval < LOCK_DELAY) the piece would never actually lock.
-        this.clearLockTimer();
-        const shape = this.current.blocks[this.current.rotation];
-        const lockedType = this.current.type;
-        const lockedX = this.current.x;
-        const lockedY = this.current.y;
-        shape.forEach(([dx, dy]) => {
-            const px = lockedX + dx;
-            const py = lockedY + dy;
-            if (py >= 0 && py < BOARD_HEIGHT) {
-                this.board[py][px] = { color: PIECE_COLORS[lockedType], type: lockedType };
-            }
-        });
-        this.current = null;
-        this.handleLines();
-        this.spawnPiece();
-        this.draw();
+        this.lockPiece(true);
     }
 
     updateUI() {
+        const running = this.state === 'playing' || this.state === 'paused';
+        this.ui.modeSelect.disabled = running;
+        this.ui.stageSelect.disabled = running;
+        this.ui.pauseBtn.disabled = !running;
+        this.ui.pauseBtn.textContent = this.state === 'paused' ? 'Resume' : 'Pause';
+        this.ui.startBtn.textContent = running ? 'Restart' : 'Start';
+        if (this.ui.best) this.ui.best.textContent = this.readBest().toLocaleString();
+        if (this.ui.feedback) this.ui.feedback.textContent = performance.now() < this.clearUntil ? this.lastClear : this.assisted ? 'AI-assisted run · personal records paused' : 'Stack smart. Leave room to breathe.';
+        if (this.ui.progress) {
+            const percent = this.mode === 'ultra' ? this.elapsed / 120 : this.lines / MODES[this.mode].goalLines;
+            this.ui.progress.value = Math.min(100, percent * 100);
+        }
         this.ui.score.textContent = this.score.toLocaleString();
         this.ui.lines.textContent = this.lines;
         this.ui.level.textContent = this.level;
@@ -877,7 +1040,7 @@ class TetrisGame {
         }
 
         if (this.state === "playing") {
-            this.ui.message.textContent = "Neon storm in play — keep stacking!";
+            this.ui.message.textContent = this.aiMode ? 'AI is playing · B to take control' : 'Hold a piece, plan your landing, build a clean stack.';
         } else if (this.state === "paused") {
             this.ui.message.textContent = "Paused · Click Resume or press Space";
         } else if (this.state === "over") {
@@ -886,12 +1049,36 @@ class TetrisGame {
             this.ui.message.textContent = "Choose a mode to begin.";
         }
     }
+
+    readBest() {
+        const key = `tetris_best_${this.mode}_${this.stage.id}`;
+        if (this.records.has(key)) return this.records.get(key);
+        let value = 0;
+        try { value = Math.max(0, Number(localStorage.getItem(key)) || 0); } catch {}
+        this.records.set(key, value);
+        return value;
+    }
+
+    finishRecord() {
+        if (this.assisted) return;
+        this.best = Math.max(this.readBest(), this.score);
+        this.records.set(`tetris_best_${this.mode}_${this.stage.id}`, this.best);
+        try { localStorage.setItem(`tetris_best_${this.mode}_${this.stage.id}`, String(this.best)); } catch {}
+    }
+
+    resultText() {
+        return `${this.score.toLocaleString()} points · ${this.lines} lines · ${this.elapsed.toFixed(1)}s. ${this.assisted ? 'AI-assisted practice run.' : 'Best for this mode and stage: ' + this.best.toLocaleString() + '.'}`;
+    }
 }
 
 let tetrisGame = null;
 
 function initTetrisGame() {
-    tetrisGame = new TetrisGame();
+    if (!tetrisGame) tetrisGame = new TetrisGame();
 }
 
 window.initTetrisGame = initTetrisGame;
+const previousTetrisText = window.render_game_to_text;
+window.render_game_to_text = () => document.body.dataset.game === 'tetris' && tetrisGame
+    ? JSON.stringify({ game: 'tetris', coordinates: 'x right, y down; rows 0-1 hidden', state: tetrisGame.state, mode: tetrisGame.mode, score: tetrisGame.score, lines: tetrisGame.lines, current: tetrisGame.current && { type: tetrisGame.current.type, x: tetrisGame.current.x, y: tetrisGame.current.y, rotation: tetrisGame.current.rotation }, hold: tetrisGame.hold, queue: tetrisGame.queue.slice(0, 3), board: tetrisGame.board.map(row => row.map(cell => cell?.type || null)), assisted: tetrisGame.assisted })
+    : previousTetrisText?.() || JSON.stringify({ game: document.body.dataset.game });

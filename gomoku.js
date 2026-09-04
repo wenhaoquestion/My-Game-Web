@@ -65,6 +65,11 @@
     let difficulty;     // "easy" | "medium" | "hard"
     let hoverCell;      // {r,c} | null
     let aiThinking;
+    let gameVersion = 0;
+    let aiTimer = null;
+    let timerPausedAt = null;
+    let hintCell = null;
+    let threats = [];
 
     // Move timer
     let moveStartTime;
@@ -103,16 +108,26 @@
 
         if (newGameBtnEl) newGameBtnEl.addEventListener("click", startNewGame);
         if (undoBtnEl)    undoBtnEl.addEventListener("click", undoMove);
+        document.getElementById("gomoku-hint-btn")?.addEventListener("click", showHint);
         if (overlayPrimaryEl) overlayPrimaryEl.addEventListener("click", startNewGame);
         if (modeSelectEl) modeSelectEl.addEventListener("change", startNewGame);
         if (diffSelectEl) diffSelectEl.addEventListener("change", startNewGame);
 
+        document.addEventListener("arcade:screenchange", syncActivity);
+        document.addEventListener("visibilitychange", syncActivity);
+        document.addEventListener("arcade:pause", syncActivity);
+        document.addEventListener("arcade:helpclose", syncActivity);
         showWelcomeOverlay();
         startNewGame();
     };
 
     // ─── Game lifecycle ───────────────────────────────────────────────────────
     function startNewGame() {
+        hintCell = null;
+        threats = [];
+        gameVersion += 1;
+        clearTimeout(aiTimer);
+        timerPausedAt = null;
         mode       = modeSelectEl ? modeSelectEl.value : "pvp";
         difficulty = diffSelectEl ? diffSelectEl.value : "hard";
 
@@ -127,6 +142,7 @@
         hideOverlay();
         updateStatusUI();
         updateMoveCountUI();
+        updateThreats();
         resetMoveTimer();
         startMoveTimer();
         renderBoard();
@@ -201,21 +217,25 @@
         if (board[r][c] !== 0 || gameOver) return;
 
         board[r][c] = currentPlayer;
+        hintCell = null;
         moveHistory.push({ r, c, player: currentPlayer });
         hoverCell = null;
 
+        const version = gameVersion;
         const winner = checkWin(r, c, currentPlayer);
         if (winner) {
             winnerStones = winner;
             gameOver     = true;
             stopMoveTimer();
             const winnerName = currentPlayer === BLACK ? "Black" : "White";
+            setCoach(`${winnerName} completed five in a row. Undo can reopen the last position.`);
             if (currentPlayer === BLACK) blackWins++;
             else whiteWins++;
             updateWinsUI();
             updateMoveCountUI();
             renderBoard();
             setTimeout(() => {
+                if (version !== gameVersion) return;
                 showOverlay(
                     `${winnerName} Wins!`,
                     `Five in a row achieved in ${moveHistory.length} moves.`,
@@ -231,12 +251,14 @@
             updateMoveCountUI();
             renderBoard();
             setTimeout(() => {
+                if (version !== gameVersion) return;
                 showOverlay("Draw!", "The board is full. No winner.", "Play Again");
             }, 300);
             return;
         }
 
         currentPlayer = currentPlayer === BLACK ? WHITE : BLACK;
+        updateThreats();
         updateStatusUI();
         updateMoveCountUI();
         resetMoveTimer();
@@ -256,10 +278,23 @@
     }
 
     function undoMove() {
-        if (gameOver || moveHistory.length === 0) return;
+        if (moveHistory.length === 0) return;
+        gameVersion += 1;
+        clearTimeout(aiTimer);
+        aiThinking = false;
+
+        if (gameOver && winnerStones?.length) {
+            if (moveHistory.at(-1).player === BLACK) blackWins = Math.max(0, blackWins - 1);
+            else whiteWins = Math.max(0, whiteWins - 1);
+            updateWinsUI();
+        }
+        gameOver = false;
+        winnerStones = null;
+        hintCell = null;
+        hideOverlay();
 
         // In PvP: undo one move. In PvE: undo two (player + AI).
-        const undoCount = (mode === "pve" && moveHistory.length >= 2) ? 2 : 1;
+        const undoCount = mode === "pve" && moveHistory.at(-1).player === WHITE && moveHistory.length >= 2 ? 2 : 1;
         for (let i = 0; i < undoCount; i++) {
             if (moveHistory.length === 0) break;
             const last = moveHistory.pop();
@@ -269,12 +304,57 @@
         // Restore current player
         currentPlayer = moveHistory.length === 0 ? BLACK
             : (moveHistory[moveHistory.length - 1].player === BLACK ? WHITE : BLACK);
+        updateThreats();
 
         hoverCell = null;
         updateStatusUI();
         updateMoveCountUI();
         resetMoveTimer();
         startMoveTimer();
+        renderBoard();
+    }
+
+    function setCoach(text) {
+        const el = document.getElementById("gomoku-coach");
+        if (el) el.textContent = text;
+    }
+
+    function winningPoints(player) {
+        const result = [];
+        for (let r = 0; r < BOARD_SIZE; r++) for (let c = 0; c < BOARD_SIZE; c++) {
+            if (board[r][c]) continue;
+            board[r][c] = player;
+            const wins = checkWinFast(r, c, player);
+            board[r][c] = 0;
+            if (wins) result.push({ r, c });
+        }
+        return result;
+    }
+
+    function updateThreats() {
+        threats = winningPoints(currentPlayer === BLACK ? WHITE : BLACK);
+        setCoach(threats.length ? `${currentPlayer === BLACK ? "White" : "Black"} threatens five at ${threats.map(cell => `R${cell.r + 1}C${cell.c + 1}`).slice(0, 3).join(" or ")}. Check your defense.` : "Connect five. Hint looks for a win, then a block, then a stronger position.");
+    }
+
+    function showHint() {
+        if (!isActive() || gameOver || aiThinking || (mode === "pve" && currentPlayer !== BLACK)) return;
+        const wins = winningPoints(currentPlayer);
+        const blocks = winningPoints(currentPlayer === BLACK ? WHITE : BLACK);
+        let reason;
+        if (wins.length) { hintCell = wins[0]; reason = "Complete your five-in-a-row."; }
+        else if (blocks.length) { hintCell = blocks[0]; reason = blocks.length > 1 ? "Block one immediate threat; your opponent has more than one winning point." : "Block the opponent's immediate five-in-a-row."; }
+        else {
+            let score = -Infinity;
+            for (const candidate of getCandidates()) {
+                board[candidate.r][candidate.c] = currentPlayer;
+                const value = evaluateBoard() * (currentPlayer === WHITE ? 1 : -1);
+                board[candidate.r][candidate.c] = 0;
+                if (value > score) { score = value; hintCell = candidate; }
+            }
+            reason = "Build a stronger line while keeping room to extend.";
+        }
+        if (!hintCell) return;
+        setCoach(`Consider R${hintCell.r + 1}C${hintCell.c + 1}. ${reason}`);
         renderBoard();
     }
 
@@ -313,10 +393,15 @@
 
     // ─── AI ───────────────────────────────────────────────────────────────────
     function scheduleAiMove() {
+        const version = gameVersion;
+        clearTimeout(aiTimer);
         aiThinking = true;
         updateStatusUI();
         // Small delay so the UI repaints first
-        setTimeout(() => {
+        aiTimer = setTimeout(() => {
+            aiTimer = null;
+            if (version !== gameVersion || gameOver || currentPlayer !== WHITE || mode !== "pve") return;
+            if (!isActive()) { aiThinking = false; return; }
             const move = getAiMove();
             aiThinking = false;
             if (move) placeStone(move.r, move.c);
@@ -504,12 +589,33 @@
     }
 
     // ─── Timer ────────────────────────────────────────────────────────────────
+    function isActive() {
+        return !document.hidden && document.body.dataset.gameHelp !== "open" && document.getElementById("gomoku-screen")?.classList.contains("active");
+    }
+
+    function syncActivity() {
+        if (!isActive()) {
+            gameVersion++;
+            if (timerPausedAt === null) timerPausedAt = Date.now();
+            stopMoveTimer();
+            clearTimeout(aiTimer);
+            aiThinking = false;
+        } else if (!gameOver) {
+            if (timerPausedAt !== null) moveStartTime += Date.now() - timerPausedAt;
+            timerPausedAt = null;
+            startMoveTimer();
+            if (mode === "pve" && currentPlayer === WHITE) scheduleAiMove();
+        }
+    }
+
     function resetMoveTimer() {
+        timerPausedAt = null;
         moveStartTime = Date.now();
     }
 
     function startMoveTimer() {
         stopMoveTimer();
+        if (!isActive()) { timerPausedAt ??= Date.now(); return; }
         timerInterval = setInterval(() => {
             if (!gameOver && !aiThinking) {
                 updateStatusUI();
@@ -530,6 +636,9 @@
 
     // ─── UI helpers ───────────────────────────────────────────────────────────
     function updateStatusUI() {
+        if (undoBtnEl) undoBtnEl.disabled = !moveHistory?.length;
+        const hint = document.getElementById("gomoku-hint-btn");
+        if (hint) hint.disabled = gameOver || aiThinking || (mode === "pve" && currentPlayer !== BLACK);
         if (!statusEl) return;
         if (gameOver) {
             statusEl.textContent = "Game Over";
@@ -551,6 +660,9 @@
 
     function updateMoveCountUI() {
         if (moveCountEl) moveCountEl.textContent = moveHistory.length;
+        if (undoBtnEl) undoBtnEl.disabled = !moveHistory.length;
+        const hint = document.getElementById("gomoku-hint-btn");
+        if (hint) hint.disabled = gameOver || aiThinking || (mode === "pve" && currentPlayer !== BLACK);
     }
 
     // ─── Rendering ────────────────────────────────────────────────────────────
@@ -571,6 +683,13 @@
         drawHover();
         drawStones();
         drawWinLine();
+        if (hintCell && !board[hintCell.r][hintCell.c]) {
+            const { x, y } = cellToXY(hintCell.r, hintCell.c);
+            ctx.save(); ctx.strokeStyle = "#d9fa71"; ctx.lineWidth = 3; ctx.setLineDash([4, 3]);
+            ctx.beginPath(); ctx.arc(x, y, CELL * 0.4, 0, Math.PI * 2); ctx.stroke();
+            ctx.setLineDash([]); ctx.fillStyle = "#d9fa71";
+            ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+        }
     }
 
     function cellToXY(r, c) {
@@ -743,4 +862,10 @@
         ctx.restore();
     }
 
+    const previousText = window.render_game_to_text;
+    window.render_game_to_text = () => document.body.dataset.game === "gomoku" && board
+        ? JSON.stringify({ game: "gomoku", board, currentPlayer, gameOver, mode, aiThinking, moveHistory,
+            lastMove: moveHistory.at(-1) || null, hint: hintCell, threats, wins: { black: blackWins, white: whiteWins },
+            coordinateSystem: "row and column zero-based from top left; 1=Black, 2=White" })
+        : typeof previousText === "function" ? previousText() : JSON.stringify({ game: document.body.dataset.game });
 })(); // end IIFE

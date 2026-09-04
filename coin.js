@@ -39,6 +39,13 @@ function initCoinGame() {
     // Tracks the coin's current Y-rotation (degrees) so flips chain smoothly
     let currentRotY = 0;
     let flipLocked = false;
+    let animationFrame = null;
+    let pendingFinish = null;
+    const modeSelect = document.getElementById('coin-mode');
+    const challengeLabel = document.getElementById('coin-challenge-label');
+    const challengeProgress = document.getElementById('coin-challenge-progress');
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const challenge = () => modeSelect?.value === 'challenge';
 
     // ── Prediction buttons ────────────────────────────────────────────────────
     document.getElementById("predict-heads")?.addEventListener("click", () => setPrediction("Heads"));
@@ -55,9 +62,11 @@ function initCoinGame() {
         const tBtn = document.getElementById("predict-tails");
         if (hBtn) {
             hBtn.classList.toggle("selected-heads", state.prediction === "Heads");
+            hBtn.setAttribute('aria-pressed', String(state.prediction === 'Heads'));
         }
         if (tBtn) {
             tBtn.classList.toggle("selected-tails", state.prediction === "Tails");
+            tBtn.setAttribute('aria-pressed', String(state.prediction === 'Tails'));
         }
         if (predictStatus) {
             predictStatus.textContent = state.prediction ? `Predicting: ${state.prediction}` : "No prediction";
@@ -68,7 +77,7 @@ function initCoinGame() {
     let particles = [];
 
     function spawnParticles(isHeads) {
-        if (!pctx) return;
+        if (!pctx || reducedMotion.matches || document.body.dataset.game !== 'coin') return;
         const cx = particleCanvas.width / 2;
         const cy = particleCanvas.height / 2;
         const colors = isHeads
@@ -147,20 +156,32 @@ function initCoinGame() {
             }
 
             if (progress < 1) {
-                requestAnimationFrame(frame);
+                animationFrame = requestAnimationFrame(frame);
             } else {
                 currentRotY = targetRotY;
                 if (shadowEl) { shadowEl.style.opacity = "1"; shadowEl.style.width = "120px"; }
                 onDone();
             }
         }
-        requestAnimationFrame(frame);
+        animationFrame = requestAnimationFrame(frame);
     }
 
     // ── Core flip logic ───────────────────────────────────────────────────────
     function flipCoin() {
         if (!coin3d || flipLocked) return;
+        if (challenge() && state.total >= 10) { resetGame(); return; }
+        if (challenge() && !state.prediction) {
+            coinMessage.textContent = 'Pick Heads or Tails before this round.';
+            document.getElementById('predict-heads').focus();
+            return;
+        }
         flipLocked = true;
+        flipBtn.disabled = true;
+        resetBtn.disabled = true;
+        modeSelect.disabled = true;
+        document.getElementById('predict-heads').disabled = true;
+        document.getElementById('predict-tails').disabled = true;
+        flipBtn.textContent = 'Flipping…';
 
         const isHeads = Math.random() < 0.5;
         const result  = isHeads ? "Heads" : "Tails";
@@ -169,14 +190,21 @@ function initCoinGame() {
         const extraSpins = (5 + Math.floor(Math.random() * 5)) * 360;
         // Heads lands at 0 mod 360; Tails at 180 mod 360
         const landOffset  = isHeads ? 0 : 180;
-        const targetRotY  = currentRotY + extraSpins + landOffset;
-        const duration    = 1100 + Math.random() * 400; // 1.1 – 1.5 s
+        const targetRotY  = Math.ceil(currentRotY / 360) * 360 + extraSpins + landOffset;
+        const duration    = reducedMotion.matches ? 50 : 800 + Math.random() * 250;
 
         // Remove old land-glow classes so animation can replay
         coin3d.classList.remove("land-heads", "land-tails");
         void coin3d.offsetWidth;
 
-        animateCoin(targetRotY, duration, () => {
+        let settled = false;
+        const finish = () => {
+            if (settled) return;
+            settled = true;
+            pendingFinish = null;
+            currentRotY = targetRotY;
+            coin3d.style.transform = `rotateY(${targetRotY}deg)`;
+            if (shadowEl) { shadowEl.style.opacity = '1'; shadowEl.style.width = '120px'; }
             // Land glow
             coin3d.classList.add(isHeads ? "land-heads" : "land-tails");
 
@@ -213,16 +241,31 @@ function initCoinGame() {
             state.lastSide = result;
 
             state.history.push({ side: result, time: formatTime() });
+            if (state.history.length > 100) state.history.shift();
 
             updateStats();
             renderHistory();
 
             flipLocked = false;
-        });
+            flipBtn.disabled = false;
+            resetBtn.disabled = false;
+            modeSelect.disabled = false;
+            document.getElementById('predict-heads').disabled = challenge() && state.total >= 10;
+            document.getElementById('predict-tails').disabled = challenge() && state.total >= 10;
+            flipBtn.textContent = challenge() && state.total >= 10 ? 'Play again' : 'Flip Coin';
+            if (challenge() && state.total >= 10) {
+                coinMessage.textContent = `${state.predictCorrect} out of 10 correct. Every flip was a fresh chance.`;
+                window.ArcadeFeedback?.play('win');
+            } else window.ArcadeFeedback?.play('score');
+        };
+        pendingFinish = finish;
+        animateCoin(targetRotY, duration, finish);
     }
 
     // ── Stats & history ───────────────────────────────────────────────────────
     function updateStats() {
+        if (challengeLabel) challengeLabel.textContent = challenge() ? state.total >= 10 ? 'Ten rounds complete' : `Round ${state.total + 1} of 10` : 'Free play · no round limit';
+        if (challengeProgress) { challengeProgress.hidden = !challenge(); challengeProgress.value = Math.min(state.total, 10); }
         totalEl.textContent = state.total;
         headsEl.textContent = state.heads;
         tailsEl.textContent = state.tails;
@@ -279,6 +322,9 @@ function initCoinGame() {
         state.predictCorrect = 0;
         state.predictTotal = 0;
         currentRotY = 0;
+        flipBtn.textContent = 'Flip Coin';
+        document.getElementById('predict-heads').disabled = false;
+        document.getElementById('predict-tails').disabled = false;
         coin3d.style.transform = "rotateY(0deg)";
         coin3d.classList.remove("land-heads", "land-tails");
         if (shadowEl) { shadowEl.style.opacity = "1"; shadowEl.style.width = "120px"; }
@@ -294,14 +340,27 @@ function initCoinGame() {
     // ── Key handler ───────────────────────────────────────────────────────────
     function handleKeydown(e) {
         if (!document.getElementById("coin-screen")?.classList.contains("active")) return;
-        if (e.code === "Space") { e.preventDefault(); flipCoin(); }
+        if (e.target instanceof Element && e.target.closest("input, textarea, select, button, a, [role=\"button\"], [contenteditable=\"true\"]")) return;
+        if (e.code === "Space" && !e.repeat) { e.preventDefault(); flipCoin(); }
     }
 
     flipBtn?.addEventListener("click", flipCoin);
+    modeSelect?.addEventListener('change', resetGame);
+    const settleHiddenFlip = () => {
+        if (document.body.dataset.game === 'coin' && !document.hidden && document.body.dataset.gameHelp !== 'open') return;
+        if (animationFrame !== null) cancelAnimationFrame(animationFrame);
+        animationFrame = null;
+        pendingFinish?.();
+    };
+    document.addEventListener('arcade:screenchange', settleHiddenFlip);
+    document.addEventListener('visibilitychange', settleHiddenFlip);
+    document.addEventListener('arcade:pause', settleHiddenFlip);
     resetBtn?.addEventListener("click", resetGame);
     document.addEventListener("keydown", handleKeydown);
 
     resetGame();
+    const previous = window.render_game_to_text;
+    window.render_game_to_text = () => document.body.dataset.game === 'coin' ? JSON.stringify({ game: 'coin', mode: modeSelect.value, flipping: flipLocked, total: state.total, heads: state.heads, tails: state.tails, prediction: state.prediction, correct: state.predictCorrect, lastSide: state.lastSide, rotation: currentRotY % 360, complete: challenge() && state.total >= 10 }) : previous?.() || '{}';
 }
 
 window.initCoinGame = initCoinGame;

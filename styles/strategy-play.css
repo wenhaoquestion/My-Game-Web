@@ -1,0 +1,19 @@
+/* Board, coaching tools and setup stay in the same reading order on mobile. */
+:is(#chess-screen, #xiangqi-screen, #gomoku-screen) .canvas-layout {
+    grid-template-areas: "board sidebar" "tools sidebar";
+    grid-template-rows: auto 1fr;
+    gap: 16px 24px;
+}
+:is(#chess-screen, #xiangqi-screen, #gomoku-screen) .board-canvas-wrap { grid-area: board; }
+:is(#chess-screen, #xiangqi-screen, #gomoku-screen) .game-sidebar { grid-area: sidebar; }
+.strategy-tools { grid-area: tools; width: min(100%, 720px); justify-self: center; border: 1px solid #343737; border-radius: 10px; background: #191b1b; padding: 18px; }
+.strategy-actions { display: flex; flex-wrap: wrap; gap: 9px; }
+.strategy-actions > .btn { flex: 1 1 150px; }
+.strategy-tools p { color: var(--text); font-size: .875rem; line-height: 1.65; margin: 13px 0 8px; }
+.strategy-tools small { display: block; color: var(--text-muted); font-size: .78rem; line-height: 1.6; }
+#xiangqi-move-history { white-space: pre-line; }
+@media (max-width: 760px) {
+    :is(#chess-screen, #xiangqi-screen, #gomoku-screen) .canvas-layout { grid-template-areas: "board" "tools" "sidebar"; grid-template-rows: auto; gap: 16px; }
+    .strategy-tools { padding: 14px; }
+    .strategy-actions > .btn { flex-basis: 115px; }
+}

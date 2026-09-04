@@ -1,438 +1,231 @@
-// main.js 负责：
-// 1. 统一切换所有 screen（menu / games）
-// 2. 首次进入某个游戏时调用 initSnakeGame / init2048Game
-// 3. 加一点过渡动画（配合 CSS 的 .screen /.screen.active）
-
-function showScreen(idToShow) {
-    const screens = document.querySelectorAll(".screen");
-    screens.forEach((el) => {
-        if (el.id === idToShow) {
-            el.classList.add("active");
-        } else {
-            el.classList.remove("active");
-        }
-    });
-
-    const gameMap = {
-        "menu-screen": "menu",
-        "snake-screen": "snake",
-        "game2048-screen": "2048",
-        "merge10-screen": "merge10",
-        "ten-helper-screen": "ten-helper",
-        "coin-screen": "coin",
-        "tetris-screen": "tetris",
-        "sudoku-screen": "sudoku",
-        "poker-screen": "poker",
-        "shooter-screen": "shooter",
-        "gomoku-screen": "gomoku",
-        "xiangqi-screen": "xiangqi",
-        "chess-screen": "chess",
+/* Library, preferences and hash routing. Games keep their independent engines. */
+(() => {
+    'use strict';
+    const catalog = window.ArcadeCatalog;
+    const games = new Map(catalog.map(game => [game.id, game]));
+    const memory = new Map();
+    const storage = window.ArcadeStorage = {
+        getItem(key) { try { return localStorage.getItem(key) ?? memory.get(key) ?? null; } catch { return memory.get(key) ?? null; } },
+        setItem(key, value) { memory.set(key, String(value)); try { localStorage.setItem(key, value); } catch { /* Session preferences still work. */ } },
+        removeItem(key) { memory.delete(key); try { localStorage.removeItem(key); } catch {} },
     };
-    document.body.dataset.game = gameMap[idToShow] || "menu";
-}
+    const readList = key => {
+        try { const value = JSON.parse(storage.getItem(key)); return Array.isArray(value) ? [...new Set(value.filter(id => games.has(id)))] : []; }
+        catch { return []; }
+    };
+    const favorites = new Set(readList('arcade_favorites'));
+    let recent = readList('arcade_recent');
+    const initialized = new Set();
+    const scripts = new Map();
+    const library = document.getElementById('game-library');
+    const search = document.getElementById('game-search');
+    const empty = document.getElementById('library-empty');
+    const feedback = document.getElementById('launch-feedback');
+    let filter = 'all';
+    let view = 'discover';
+    let current = 'menu-screen';
+    let lastGame = null;
+    let libraryScroll = 0;
+    let navigation = 0;
+    const heart = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/></svg>';
+    function announce(text) { document.getElementById('app-announcement').textContent = text; }
 
-const THEME_KEY = "arcade_theme";
-const AMBIENT_KEY = "arcade_ambient";
-
-function applyTheme(theme) {
-    const themeName = theme || "nebula";
-    document.body.dataset.theme = themeName;
-    localStorage.setItem(THEME_KEY, themeName);
-}
-
-function applyAmbient(isOn) {
-    const state = isOn ? "on" : "off";
-    document.body.dataset.ambient = state;
-    localStorage.setItem(AMBIENT_KEY, state);
-}
-
-function showSudokuLoadError() {
-    const overlay = document.getElementById("sudoku-overlay");
-    const titleEl = document.getElementById("sudoku-overlay-title");
-    const descEl = document.getElementById("sudoku-overlay-desc");
-    if (titleEl) titleEl.textContent = "Sudoku Failed to Load";
-    if (descEl) {
-        descEl.textContent =
-            "Sudoku script was not loaded. Check GitHub Pages source path and ensure sudoku.js is published.";
-    }
-    if (overlay) {
-        overlay.classList.add("visible");
-    }
-}
-
-function switchToSnake() {
-    console.log("[main.js] Play Snake clicked");
-    showScreen("snake-screen");
-
-    if (!window.__snakeGameInitialized) {
-        if (typeof initSnakeGame === "function") {
-            initSnakeGame();              // 在 snake.js 里定义
-            window.__snakeGameInitialized = true;
-        } else {
-            console.error("initSnakeGame is not defined. Check snake.js.");
+    function renderLibrary() {
+        const query = search.value.trim().toLocaleLowerCase();
+        let results = catalog.filter(game =>
+            (view !== 'favorites' || favorites.has(game.id)) &&
+            (filter === 'all' || (filter === 'recent' ? recent.includes(game.id) : game.category.toLowerCase() === filter)) &&
+            `${game.title} ${game.description} ${game.keywords}`.toLocaleLowerCase().includes(query));
+        if (filter === 'recent') results.sort((a, b) => recent.indexOf(a.id) - recent.indexOf(b.id));
+        library.replaceChildren(...results.map(game => {
+            const article = document.createElement('article');
+            article.className = 'library-card';
+            const link = document.createElement('a');
+            link.className = 'game-link';
+            link.href = `#/${game.id}`;
+            link.dataset.gameLink = game.id;
+            link.setAttribute('aria-label', `Play ${game.title}`);
+            const art = document.createElement('div');
+            art.className = 'game-art';
+            art.style.setProperty('--cover-x', `${(game.cover % 4) * 100 / 3}%`);
+            art.style.setProperty('--cover-row', Math.floor(game.cover / 4));
+            art.setAttribute('aria-hidden', 'true');
+            const play = document.createElement('span');
+            play.className = 'cover-play';
+            play.textContent = 'Play ↗';
+            art.append(play);
+            const title = document.createElement('h3');
+            title.textContent = game.title;
+            const meta = document.createElement('p');
+            meta.className = 'game-meta';
+            meta.textContent = `${game.category}  ·  ${game.mode}`;
+            link.append(art, title, meta);
+            const favorite = document.createElement('button');
+            favorite.type = 'button';
+            favorite.className = 'favorite-button';
+            favorite.dataset.favorite = game.id;
+            favorite.setAttribute('aria-label', `${favorites.has(game.id) ? 'Remove' : 'Add'} ${game.title} ${favorites.has(game.id) ? 'from' : 'to'} favorites`);
+            favorite.setAttribute('aria-pressed', String(favorites.has(game.id)));
+            favorite.innerHTML = heart;
+            article.append(link, favorite);
+            return article;
+        }));
+        document.getElementById('collection-title').textContent = view === 'favorites' ? 'Your favorites' : 'The collection';
+        document.getElementById('game-count').textContent = `${results.length} ${results.length === 1 ? 'game or tool' : 'games & tools'}`;
+        document.getElementById('favorites-count').textContent = favorites.size ? ` ${favorites.size}` : '';
+        empty.hidden = results.length > 0;
+        if (!results.length) {
+            document.getElementById('empty-title').textContent = query ? 'No games found' : view === 'favorites' ? 'Keep your favorites close.' : filter === 'recent' ? 'Your next favorite is waiting.' : 'Nothing here just yet.';
+            document.getElementById('empty-description').textContent = query ? 'Try a different name, or explore the whole collection.' : view === 'favorites' ? 'Tap the heart on any game to save it here.' : 'Play something from the collection and it will appear here.';
         }
+        document.querySelectorAll('[data-filter]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.filter === filter)));
+        document.querySelectorAll('[data-library-nav]').forEach(link => {
+            const active = current === 'menu-screen' && link.dataset.libraryNav === view;
+            if (active) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current');
+        });
     }
-}
 
-function switchTo2048() {
-    console.log("[main.js] Play 2048 clicked");
-    showScreen("game2048-screen");
+    function showScreen(screenId) {
+        const previousScreenId = current;
+        if (!document.getElementById(screenId)) return;
+        current = screenId;
+        document.querySelectorAll('.screen').forEach(screen => {
+            const active = screen.id === screenId;
+            screen.classList.toggle('active', active);
+            screen.hidden = !active;
+        });
+        document.body.dataset.game = catalog.find(game => game.screen === screenId)?.id || 'menu';
+        document.querySelector('.skip-link').textContent = screenId === 'menu-screen' ? 'Skip to games' : 'Skip to game';
+        document.dispatchEvent(new CustomEvent('arcade:screenchange', { detail: { screenId, previousScreenId } }));
+    }
 
-    if (!window.__game2048Initialized) {
-        if (typeof init2048Game === "function") {
-            init2048Game();              // 在 2048.js 里定义
-            window.__game2048Initialized = true;
-        } else {
-            console.error("init2048Game is not defined. Check 2048.js.");
+    function loadScript(src) {
+        if (!scripts.has(src)) {
+            scripts.set(src, new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = src;
+                script.onload = resolve;
+                script.onerror = () => { scripts.delete(src); script.remove(); reject(new Error(`Unable to load ${src}`)); };
+                document.head.append(script);
+            }));
         }
+        return scripts.get(src);
     }
-}
-
-function switchToMerge10() {
-    console.log("[main.js] Play Merge 10 clicked");
-    showScreen("merge10-screen");
-
-    if (!window.__merge10GameInitialized) {
-        if (typeof initMerge10Game === "function") {
-            initMerge10Game();
-            window.__merge10GameInitialized = true;
-        } else {
-            console.error("initMerge10Game is not defined. Check merge10.js.");
-        }
+    function navigate(id = '') {
+        const hash = `#/${id}`;
+        if (location.hash === hash) route(); else location.hash = hash;
     }
-}
 
-function switchToTenHelper() {
-    console.log("[main.js] Open Ten Helper clicked");
-    showScreen("ten-helper-screen");
-
-    if (!window.__tenHelperInitialized) {
-        if (typeof initTenHelper === "function") {
-            initTenHelper();
-            window.__tenHelperInitialized = true;
-        } else {
-            console.error("initTenHelper is not defined. Check merge10.js.");
-        }
-    }
-}
-
-function switchToCoin() {
-    console.log("[main.js] Play Coin Toss clicked");
-    showScreen("coin-screen");
-
-    if (!window.__coinGameInitialized) {
-        if (typeof initCoinGame === "function") {
-            initCoinGame();
-            window.__coinGameInitialized = true;
-        } else {
-            console.error("initCoinGame is not defined. Check coin.js.");
-        }
-    }
-}
-
-function switchToTetris() {
-    console.log("[main.js] Play Tetris clicked");
-    showScreen("tetris-screen");
-
-    if (!window.__tetrisGameInitialized) {
-        if (typeof initTetrisGame === "function") {
-            initTetrisGame();
-            window.__tetrisGameInitialized = true;
-        } else {
-            console.error("initTetrisGame is not defined. Check tetris.js.");
-        }
-    }
-}
-
-function switchToSudoku() {
-    console.log("[main.js] Play Sudoku clicked");
-    showScreen("sudoku-screen");
-
-    if (!window.__sudokuGameInitialized) {
-        if (typeof initSudokuGame === "function") {
-            try {
-                initSudokuGame();
-            } catch (err) {
-                console.error("[main.js] initSudokuGame failed", err);
-                showSudokuLoadError();
-                return;
+    async function route() {
+        const request = ++navigation;
+        const id = location.hash.replace(/^#\/?/, '');
+        const game = games.get(id);
+        feedback.hidden = true;
+        if (!game) {
+            const wasGame = current !== 'menu-screen';
+            const nextView = id === 'favorites' ? 'favorites' : 'discover';
+            if (nextView !== view) { filter = 'all'; search.value = ''; }
+            view = nextView;
+            showScreen('menu-screen');
+            document.getElementById('discovery-intro').hidden = view === 'favorites';
+            document.title = `${view === 'favorites' ? 'Favorites · ' : ''}Wenhao’s Arcade`;
+            renderLibrary();
+            if (wasGame) {
+                const target = document.querySelector(`[data-game-link="${lastGame}"]`) || document.getElementById('collection-title');
+                target.focus({ preventScroll: true });
+                window.scrollTo(0, libraryScroll);
             }
-            window.__sudokuGameInitialized = true;
-        } else {
-            console.error("initSudokuGame is not defined. Check sudoku.js.");
-            showSudokuLoadError();
+            return;
+        }
+        if (current === 'menu-screen') libraryScroll = window.scrollY;
+        lastGame = game.id;
+        showScreen(game.screen);
+        renderLibrary();
+        document.title = `${game.title} · Wenhao’s Arcade`;
+        window.scrollTo(0, 0);
+        const screen = document.getElementById(game.screen);
+        const layout = screen.querySelector('.game-layout');
+        screen.setAttribute('aria-busy', 'true');
+        layout.inert = true;
+        try {
+            if (!initialized.has(game.id)) {
+                document.getElementById('launch-message').textContent = `Opening ${game.title}…`;
+                document.getElementById('launch-retry').hidden = true;
+                feedback.hidden = false;
+                await loadScript(game.script);
+                if (request !== navigation) return;
+                if (typeof window[game.init] !== 'function') throw new Error(`Missing ${game.init}`);
+                await window[game.init]();
+                initialized.add(game.id);
+            }
+            if (request !== navigation) return;
+            recent = [game.id, ...recent.filter(item => item !== game.id)].slice(0, catalog.length);
+            storage.setItem('arcade_recent', JSON.stringify(recent));
+            feedback.hidden = true;
+            layout.inert = false;
+            screen.querySelector('h2')?.focus({ preventScroll: true });
+            announce(`${game.title} opened`);
+        } catch (error) {
+            if (request !== navigation) return;
+            document.getElementById('launch-message').textContent = 'This game could not open. Please try again.';
+            document.getElementById('launch-retry').hidden = false;
+            feedback.hidden = false;
+            console.error(error);
+        } finally {
+            if (request === navigation || current !== game.screen) {
+                screen.removeAttribute('aria-busy');
+                layout.inert = false;
+            }
         }
     }
-}
 
-function switchToPoker() {
-    console.log("[main.js] Open Poker Odds clicked");
-    showScreen("poker-screen");
-
-    if (!window.__pokerGameInitialized) {
-        if (typeof initPokerGame === "function") {
-            initPokerGame();
-            window.__pokerGameInitialized = true;
-        } else {
-            console.error("initPokerGame is not defined. Check poker.js.");
-        }
+    function applyTheme(theme) {
+        const names = ['nebula', 'solaris', 'aqua', 'ember', 'verdant'];
+        const value = names.includes(theme) ? theme : 'nebula';
+        document.body.dataset.theme = value;
+        storage.setItem('arcade_theme', value);
+        document.querySelectorAll('.swatch').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.theme === value)));
     }
-}
-
-function switchToShooter() {
-    console.log("[main.js] Play Shooter clicked");
-    showScreen("shooter-screen");
-
-    if (!window.__shooterGameInitialized) {
-        if (typeof initShooterGame === "function") {
-            initShooterGame();
-            window.__shooterGameInitialized = true;
-        } else {
-            console.error("initShooterGame is not defined. Check shooter.js.");
-        }
+    function applyAmbient(on) {
+        document.body.dataset.ambient = on ? 'on' : 'off';
+        storage.setItem('arcade_ambient', on ? 'on' : 'off');
+        const button = document.getElementById('ambient-toggle-btn');
+        button.setAttribute('aria-pressed', String(on));
+        button.querySelector('.ctrl-btn-label').textContent = `Aura ${on ? 'on' : 'off'}`;
     }
-}
-
-function switchToGomoku() {
-    console.log("[main.js] Play Gomoku clicked");
-    showScreen("gomoku-screen");
-
-    if (!window.__gomokuGameInitialized) {
-        if (typeof initGomokuGame === "function") {
-            initGomokuGame();
-            window.__gomokuGameInitialized = true;
-        } else {
-            console.error("initGomokuGame is not defined. Check gomoku.js.");
-        }
-    }
-}
-
-function switchToXiangqi() {
-    console.log("[main.js] Play Xiangqi clicked");
-    showScreen("xiangqi-screen");
-
-    if (!window.__xiangqiGameInitialized) {
-        if (typeof initXiangqiGame === "function") {
-            initXiangqiGame();
-            window.__xiangqiGameInitialized = true;
-        } else {
-            console.error("initXiangqiGame is not defined. Check xiangqi.js.");
-        }
-    }
-}
-
-function switchToChess() {
-    console.log("[main.js] Play Chess clicked");
-    showScreen("chess-screen");
-
-    if (!window.__chessGameInitialized) {
-        if (typeof initChessGame === "function") {
-            initChessGame();
-            window.__chessGameInitialized = true;
-        } else {
-            console.error("initChessGame is not defined. Check chess.js.");
-        }
-    }
-}
-
-function switchToMenu() {
-    console.log("[main.js] Back to menu");
-    showScreen("menu-screen");
-}
-
-window.switchToSnake = switchToSnake;
-window.switchTo2048 = switchTo2048;
-window.switchToMerge10 = switchToMerge10;
-window.switchToTenHelper = switchToTenHelper;
-window.switchToCoin = switchToCoin;
-window.switchToTetris = switchToTetris;
-window.switchToSudoku = switchToSudoku;
-window.switchToPoker = switchToPoker;
-window.switchToShooter = switchToShooter;
-window.switchToGomoku = switchToGomoku;
-window.switchToXiangqi = switchToXiangqi;
-window.switchToChess = switchToChess;
-window.switchToMenu = switchToMenu;
-
-// Prevent arrow keys / Space from scrolling the page.
-// Each game's own keydown handler still receives and processes the events.
-window.addEventListener("keydown", function (e) {
-    const scrollKeys = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "];
-    if (scrollKeys.includes(e.key)) {
-        e.preventDefault();
-    }
-}, { passive: false });
-
-document.addEventListener("DOMContentLoaded", () => {
-    console.log("[main.js] DOM ready");
-
-    const themeSelect = document.getElementById("theme-select");
-    const ambientToggleBtn = document.getElementById("ambient-toggle-btn");
-
-    const playSnakeBtn = document.getElementById("play-snake-btn");
-    const backSnakeBtn = document.getElementById("back-to-menu-btn");
-
-    const play2048Btn = document.getElementById("play-2048-btn");
-    const back2048Btn = document.getElementById("back-to-menu-2048-btn");
-
-    const playCoinBtn = document.getElementById("play-coin-btn");
-    const backCoinBtn = document.getElementById("back-to-menu-coin-btn");
-
-    const playSudokuBtn = document.getElementById("play-sudoku-btn");
-    const backSudokuBtn = document.getElementById("back-to-menu-sudoku-btn");
-
-    const playTetrisBtn = document.getElementById("play-tetris-btn");
-    const backTetrisBtn = document.getElementById("back-to-menu-tetris-btn");
-
-    const playPokerBtn = document.getElementById("play-poker-btn");
-    const backPokerBtn = document.getElementById("back-to-menu-poker-btn");
-
-    const playShooterBtn = document.getElementById("play-shooter-btn");
-    const playXiangqiBtn = document.getElementById("play-xiangqi-btn");
-    const playChessBtn = document.getElementById("play-chess-btn");
-
-    // 按钮按下小压感效果
-    document.querySelectorAll(".game-card .btn").forEach((btn) => {
-        btn.addEventListener("mousedown", () => {
-            btn.classList.add("pressed");
-        });
-        btn.addEventListener("mouseup", () => {
-            btn.classList.remove("pressed");
-        });
-        btn.addEventListener("mouseleave", () => {
-            btn.classList.remove("pressed");
-        });
+    library.addEventListener('click', event => {
+        const button = event.target.closest('[data-favorite]');
+        if (!button) return;
+        const id = button.dataset.favorite;
+        if (favorites.has(id)) favorites.delete(id); else favorites.add(id);
+        storage.setItem('arcade_favorites', JSON.stringify([...favorites]));
+        renderLibrary();
+        (library.querySelector(`[data-favorite="${id}"]`) || library.querySelector('.favorite-button') || document.getElementById('collection-title')).focus({ preventScroll: true });
+        announce(`${games.get(id).title} ${favorites.has(id) ? 'added to' : 'removed from'} favorites`);
     });
-
-    // ====== 进入 Snake ======
-    if (playSnakeBtn) {
-        playSnakeBtn.addEventListener("click", switchToSnake);
-    }
-
-    // Snake 返回大厅
-    if (backSnakeBtn) {
-        backSnakeBtn.addEventListener("click", switchToMenu);
-    }
-
-    // ====== 进入 2048 ======
-    if (play2048Btn) {
-        play2048Btn.addEventListener("click", switchTo2048);
-    }
-
-    // 2048 返回大厅
-    if (back2048Btn) {
-        back2048Btn.addEventListener("click", switchToMenu);
-    }
-
-    // ====== 进入 Coin Toss ======
-    if (playCoinBtn) {
-        playCoinBtn.addEventListener("click", switchToCoin);
-    }
-
-    // Coin Toss 返回大厅
-    if (backCoinBtn) {
-        backCoinBtn.addEventListener("click", switchToMenu);
-    }
-
-    // ====== 进入 Sudoku ======
-    if (playSudokuBtn) {
-        playSudokuBtn.addEventListener("click", switchToSudoku);
-    }
-
-    // Sudoku 返回大厅
-    if (backSudokuBtn) {
-        backSudokuBtn.addEventListener("click", switchToMenu);
-    }
-
-    // ====== 进入 Tetris ======
-    if (playTetrisBtn) {
-        playTetrisBtn.addEventListener("click", switchToTetris);
-    }
-
-    // Tetris 返回大厅
-    if (backTetrisBtn) {
-        backTetrisBtn.addEventListener("click", switchToMenu);
-    }
-
-    // ====== 进入 Poker Odds ======
-    if (playPokerBtn) {
-        playPokerBtn.addEventListener("click", switchToPoker);
-    }
-
-    // Poker 返回大厅
-    if (backPokerBtn) {
-        backPokerBtn.addEventListener("click", switchToMenu);
-    }
-
-    // ====== 进入 Shooter ======
-    if (playShooterBtn) {
-        playShooterBtn.addEventListener("click", switchToShooter);
-    }
-
-    // ====== 进入 Xiangqi ======
-    if (playXiangqiBtn) {
-        playXiangqiBtn.addEventListener("click", switchToXiangqi);
-    }
-
-    // ====== 进入 Chess ======
-    if (playChessBtn) {
-        playChessBtn.addEventListener("click", switchToChess);
-    }
-
-    const storedTheme = localStorage.getItem(THEME_KEY);
-    const themeOptions = ["nebula", "solaris", "aqua", "ember", "verdant"];
-    const initialTheme = themeOptions.includes(storedTheme) ? storedTheme : "nebula";
-
-    function updateSwatchActive(theme) {
-        document.querySelectorAll(".swatch").forEach(s => {
-            s.classList.toggle("active", s.dataset.theme === theme);
-        });
-    }
-
-    applyTheme(initialTheme);
-    updateSwatchActive(initialTheme);
-
-    // Legacy dropdown support (if present)
-    if (themeSelect) {
-        themeSelect.value = initialTheme;
-        themeSelect.addEventListener("change", (e) => {
-            applyTheme(e.target.value);
-            updateSwatchActive(e.target.value);
-        });
-    }
-
-    // New swatch buttons
-    document.querySelectorAll(".swatch").forEach(swatch => {
-        swatch.addEventListener("click", () => {
-            const theme = swatch.dataset.theme;
-            applyTheme(theme);
-            updateSwatchActive(theme);
-            if (themeSelect) themeSelect.value = theme;
-        });
+    document.querySelectorAll('[data-filter]').forEach(button => button.addEventListener('click', () => { filter = button.dataset.filter; renderLibrary(); }));
+    search.addEventListener('input', renderLibrary);
+    document.getElementById('clear-search').addEventListener('click', () => { search.value = ''; renderLibrary(); search.focus(); });
+    document.getElementById('reset-library').addEventListener('click', () => { filter = 'all'; search.value = ''; navigate(); renderLibrary(); });
+    document.getElementById('launch-retry').addEventListener('click', route);
+    document.querySelector('.skip-link').addEventListener('click', event => {
+        event.preventDefault();
+        const target = current === 'menu-screen' ? document.getElementById('collection-title') : document.getElementById(current).querySelector('h2');
+        target?.focus();
+        target?.scrollIntoView({ block: 'start' });
     });
-
-    function setAmbientLabel(isOn) {
-        if (!ambientToggleBtn) return;
-        const labelEl = ambientToggleBtn.querySelector(".ctrl-btn-label");
-        if (labelEl) {
-            labelEl.textContent = isOn ? "Aura On" : "Aura Off";
-        } else {
-            ambientToggleBtn.textContent = `Aura: ${isOn ? "On" : "Off"}`;
-        }
-    }
-
-    const storedAmbient = localStorage.getItem(AMBIENT_KEY);
-    const ambientOn = storedAmbient !== "off";
-    applyAmbient(ambientOn);
-    if (ambientToggleBtn) {
-        setAmbientLabel(ambientOn);
-        ambientToggleBtn.addEventListener("click", () => {
-            const isOn = document.body.dataset.ambient !== "on";
-            applyAmbient(isOn);
-            setAmbientLabel(isOn);
-        });
-    }
-
-    // 默认显示大厅
-    showScreen("menu-screen");
-});
+    document.querySelectorAll('.back-btn').forEach(button => button.addEventListener('click', () => navigate(view === 'favorites' ? 'favorites' : '')));
+    document.querySelectorAll('.swatch').forEach(button => button.addEventListener('click', () => applyTheme(button.dataset.theme)));
+    document.getElementById('ambient-toggle-btn').addEventListener('click', () => applyAmbient(document.body.dataset.ambient !== 'on'));
+    window.addEventListener('keydown', event => {
+        if (event.target.closest?.('input, textarea, select, button, a, [role="button"], [contenteditable="true"]')) return;
+        if (['snake', '2048', 'tetris', 'shooter', 'sudoku', 'coin'].includes(document.body.dataset.game) && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(event.key)) event.preventDefault();
+    }, { passive: false });
+    window.addEventListener('hashchange', route);
+    catalog.forEach(game => { window[game.legacy] = () => navigate(game.id); });
+    window.switchToMenu = () => navigate(view === 'favorites' ? 'favorites' : '');
+    window.showScreen = showScreen;
+    applyTheme(storage.getItem('arcade_theme'));
+    applyAmbient(storage.getItem('arcade_ambient') === 'on');
+    route();
+})();

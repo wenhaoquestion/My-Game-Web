@@ -2,7 +2,7 @@
 const CELL_SIZE = 24;
 const GRID_WIDTH = 26;
 const GRID_HEIGHT = 22;
-const PANEL_HEIGHT = 80;
+const PANEL_HEIGHT = 0;
 const FPS_BASE = 10;
 
 const CANVAS_WIDTH = CELL_SIZE * GRID_WIDTH;
@@ -46,13 +46,14 @@ const SKINS = [
 // ============ Helpers ============
 
 function loadHighscore() {
-    const raw = window.localStorage.getItem(HIGHSCORE_KEY);
-    const n = parseInt(raw, 10);
-    return Number.isFinite(n) ? n : 0;
+    try {
+        const n = parseInt(window.localStorage.getItem(HIGHSCORE_KEY), 10);
+        return Number.isFinite(n) ? n : 0;
+    } catch { return 0; }
 }
 
 function saveHighscore(score) {
-    window.localStorage.setItem(HIGHSCORE_KEY, String(score));
+    try { window.localStorage.setItem(HIGHSCORE_KEY, String(score)); } catch { /* Scores remain available in this session. */ }
 }
 
 function lerpColor(c1, c2, t) {
@@ -116,25 +117,27 @@ class Snake {
         this.body = body; // array of {x,y}
         this.direction = direction;
         this.pendingDirection = { ...direction };
+        this.directionQueue = [];
+        this.deathReason = "";
         this.growPending = 0;
         this.alive = true;
     }
 
     changeDirection(newDir) {
-        // prevent 180° turn
-        if (
-            (newDir.x === -this.direction.x && newDir.x !== 0) ||
-            (newDir.y === -this.direction.y && newDir.y !== 0)
-        ) {
-            return;
-        }
-        this.pendingDirection = newDir;
+        const previous = this.directionQueue.at(-1) || this.direction;
+        if (this.directionQueue.length >= 2 ||
+            (newDir.x === previous.x && newDir.y === previous.y) ||
+            (newDir.x === -previous.x && newDir.y === -previous.y)) return false;
+        this.directionQueue.push({ ...newDir });
+        this.pendingDirection = { ...this.directionQueue[0] };
+        return true;
     }
 
     step(wrap) {
         if (!this.alive) return;
 
-        this.direction = { ...this.pendingDirection };
+        this.direction = this.directionQueue.shift() || this.direction;
+        this.pendingDirection = { ...(this.directionQueue[0] || this.direction) };
 
         const head = this.body[0];
         let nx = head.x + this.direction.x;
@@ -148,6 +151,7 @@ class Snake {
                 nx < 0 || nx >= GRID_WIDTH ||
                 ny < 0 || ny >= GRID_HEIGHT
             ) {
+                this.deathReason = "wall";
                 this.alive = false;
                 return;
             }
@@ -161,6 +165,7 @@ class Snake {
                 : this.body.slice(0, this.body.length - 1);
 
         if (bodyToCheck.some(seg => seg.x === nx && seg.y === ny)) {
+            this.deathReason = "tail";
             this.alive = false;
             return;
         }
@@ -335,7 +340,13 @@ class SnakeGame {
         canvas.width = CANVAS_WIDTH;
         canvas.height = CANVAS_HEIGHT;
 
-        this.state = "menu"; // "menu" / "running" / "paused" / "game_over"
+        this.state = "ready"; // ready | countdown | running | paused | game_over
+        this.rafId = null;
+        this.lastFrame = null;
+        this.countdownRemaining = 0;
+        this.fruitCount = 0;
+        this.feedbackRemaining = 0;
+        this.resultReason = "";
         this.mode = "Classic";
         this.speedLevel = 2;
         this.skinIndex = 0;
@@ -370,7 +381,6 @@ class SnakeGame {
         this.addTouchControls();
         this.updateUI();
 
-        this.state = "running";
     }
 
     get currentSkin() {
@@ -408,15 +418,15 @@ class SnakeGame {
 
         // 水平线
         for (let x = 0; x < GRID_WIDTH; x++) {
-            if (x === midX) continue;
+            if ([5, midX, GRID_WIDTH - 6].some(gap => Math.abs(x - gap) <= 1)) continue;
             cross.push({ x, y: midY });
         }
         // 垂直线
         for (let y = 0; y < GRID_HEIGHT; y++) {
-            if (y === midY) continue;
+            if ([5, midY, GRID_HEIGHT - 6].some(gap => Math.abs(y - gap) <= 1)) continue;
             cross.push({ x: midX, y });
         }
-        levels.push(new Level("Cross Maze", cross));
+        levels.push(new Level("Crossroads", cross));
 
         // Level 3
         const stripes = [];
@@ -437,68 +447,51 @@ class SnakeGame {
 
 
     findSafeSpawn() {
-        const obstacles = new Set(
-            this.currentLevel.obstacles.map(p => `${p.x},${p.y}`)
-        );
-        const wrap = this.mode === "Portal (Wrap)";
-        const dirs = [
-            { x: 1, y: 0 },
-            { x: -1, y: 0 },
-            { x: 0, y: 1 },
-            { x: 0, y: -1 },
-        ];
-
-        for (let tries = 0; tries < 2000; tries++) {
-            const x = Math.floor(Math.random() * GRID_WIDTH);
-            const y = Math.floor(Math.random() * GRID_HEIGHT);
-            if (obstacles.has(`${x},${y}`)) continue;
-
-            // shuffle dirs
-            const shuffled = [...dirs].sort(() => Math.random() - 0.5);
-            for (const d of shuffled) {
-                const body = [
-                    { x, y },
-                    { x: x - d.x, y: y - d.y },
-                    { x: x - 2 * d.x, y: y - 2 * d.y },
-                ];
-
-                const outOfBounds = body.some(
-                    b =>
-                        b.x < 0 || b.x >= GRID_WIDTH ||
-                        b.y < 0 || b.y >= GRID_HEIGHT
-                );
-                if (outOfBounds) continue;
-
-                const onObstacle = body.some(b => obstacles.has(`${b.x},${b.y}`));
-                if (onObstacle) continue;
-
-                // simulate first step
-                let nx = x + d.x;
-                let ny = y + d.y;
-                if (wrap) {
-                    nx = (nx + GRID_WIDTH) % GRID_WIDTH;
-                    ny = (ny + GRID_HEIGHT) % GRID_HEIGHT;
-                } else {
-                    if (
-                        nx < 0 || nx >= GRID_WIDTH ||
-                        ny < 0 || ny >= GRID_HEIGHT
-                    ) {
-                        continue;
-                    }
+        const blocked = new Set(this.currentLevel.obstacles.map(p => `${p.x},${p.y}`));
+        const preferred = { x: Math.floor(GRID_WIDTH / 3), y: Math.floor(GRID_HEIGHT / 2) };
+        const positions = [];
+        for (let y = 3; y < GRID_HEIGHT - 3; y++) {
+            for (let x = 3; x < GRID_WIDTH - 3; x++) positions.push({ x, y });
+        }
+        positions.sort((a, b) => Math.abs(a.x - preferred.x) + Math.abs(a.y - preferred.y) - Math.abs(b.x - preferred.x) - Math.abs(b.y - preferred.y));
+        for (const head of positions) {
+            for (const direction of [{ x: 1, y: 0 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 0, y: -1 }]) {
+                let clear = true;
+                for (let offset = -2; offset <= 6; offset++) {
+                    const x = head.x + offset * direction.x;
+                    const y = head.y + offset * direction.y;
+                    if (x < 0 || x >= GRID_WIDTH || y < 0 || y >= GRID_HEIGHT || blocked.has(`${x},${y}`)) { clear = false; break; }
                 }
-                if (obstacles.has(`${nx},${ny}`)) continue;
-
-                return [{ x, y }, d];
+                if (clear) return [head, direction];
             }
         }
+        return [{ x: 3, y: 1 }, { x: 1, y: 0 }];
+    }
 
-        // fallback
-        const sx = Math.floor(GRID_WIDTH / 2);
-        const sy = Math.floor(GRID_HEIGHT / 2);
-        return [{ x: sx, y: sy }, { x: 1, y: 0 }];
+    findReachableCells() {
+        const blocked = new Set(this.currentLevel.obstacles.map(p => `${p.x},${p.y}`));
+        const visited = new Set();
+        const queue = [this.snake.body[0]];
+        for (let index = 0; index < queue.length; index++) {
+            let { x, y } = queue[index];
+            if (this.mode === "Portal (Wrap)") {
+                x = (x + GRID_WIDTH) % GRID_WIDTH;
+                y = (y + GRID_HEIGHT) % GRID_HEIGHT;
+            }
+            const key = `${x},${y}`;
+            if (x < 0 || x >= GRID_WIDTH || y < 0 || y >= GRID_HEIGHT || blocked.has(key) || visited.has(key)) continue;
+            visited.add(key);
+            queue.push({ x: x + 1, y }, { x: x - 1, y }, { x, y: y + 1 }, { x, y: y - 1 });
+        }
+        return visited;
     }
 
     resetGame() {
+        this.state = "ready";
+        this.fruitCount = 0;
+        this.resultReason = "";
+        this.feedbackRemaining = 0;
+        if (this.ui.feedback) { this.ui.feedback.textContent = ""; this.ui.feedback.classList.remove("visible"); }
         const [startPos, dir] = this.findSafeSpawn();
         this.snake = new Snake(
             [
@@ -512,6 +505,8 @@ class SnakeGame {
         this.score = 0;
         this.elapsedTime = 0;
         this.moveAcc = 0;
+        this.food = null;
+        this.reachableCells = this.findReachableCells();
         this.superFood = null;
         this.superFoodTimer = 0;
         this.powerups = [];
@@ -539,16 +534,25 @@ class SnakeGame {
         const freeCells = [];
         for (let x = 0; x < GRID_WIDTH; x++) {
             for (let y = 0; y < GRID_HEIGHT; y++) {
-                if (!occupied.has(`${x},${y}`)) freeCells.push({ x, y });
+                if (!occupied.has(`${x},${y}`) && this.reachableCells.has(`${x},${y}`)) freeCells.push({ x, y });
             }
         }
-        if (freeCells.length === 0) return;
+        if (freeCells.length === 0) {
+            if (!isSuper && (this.superFood || this.powerups.length)) {
+                this.superFood = null;
+                this.powerups = [];
+                return this.spawnFood(false);
+            }
+            if (!isSuper) this.food = null;
+            return false;
+        }
         const pos = freeCells[Math.floor(Math.random() * freeCells.length)];
         if (isSuper) {
             this.superFood = new Food(pos, true, 8);
         } else {
             this.food = new Food(pos, false, 0);
         }
+        return true;
     }
 
     spawnPowerup() {
@@ -564,7 +568,7 @@ class SnakeGame {
         const freeCells = [];
         for (let x = 0; x < GRID_WIDTH; x++) {
             for (let y = 0; y < GRID_HEIGHT; y++) {
-                if (!occupied.has(`${x},${y}`)) freeCells.push({ x, y });
+                if (!occupied.has(`${x},${y}`) && this.reachableCells.has(`${x},${y}`)) freeCells.push({ x, y });
             }
         }
         if (freeCells.length === 0) return;
@@ -576,81 +580,212 @@ class SnakeGame {
     applySpeedEffect(kind) {
         this.activeSpeedEffect = kind;
         this.speedEffectTime = 8;
+        this.showFeedback(kind === "slow" ? "A little breathing room · 8s" : "Pick up the pace · 8s");
+        window.ArcadeFeedback?.play("score");
         this.updateUI();
     }
 
     // ---------- UI 绑定 & 按键 ----------
 
     addEventListeners() {
-        window.addEventListener("keydown", (e) => {
-            // 只有在 snake 屏幕是 active 时才响应
-            if (!this.isActiveScreen()) return;
-            if (!this.snake) return;
-            // 后面保持不变：
-            if (e.key === "ArrowUp" || e.key === "w" || e.key === "W") {
-                this.snake.changeDirection({ x: 0, y: -1 });
-            } else if (e.key === "ArrowDown" || e.key === "s" || e.key === "S") {
-                this.snake.changeDirection({ x: 0, y: 1 });
-            } else if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") {
-                this.snake.changeDirection({ x: -1, y: 0 });
-            } else if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") {
-                this.snake.changeDirection({ x: 1, y: 0 });
-            } else if (e.key === "Escape") {
-                if (this.state === "running") this.state = "paused";
-                else if (this.state === "paused") this.state = "running";
+        window.addEventListener("keydown", (event) => {
+            if (!this.isActiveScreen() || document.hidden || event.target.closest?.('input, textarea, select, button, a, [role="button"], [contenteditable="true"]')) return;
+            const directions = { ArrowUp: [0, -1], w: [0, -1], ArrowDown: [0, 1], s: [0, 1], ArrowLeft: [-1, 0], a: [-1, 0], ArrowRight: [1, 0], d: [1, 0] };
+            const direction = directions[event.key] || directions[event.key.toLowerCase()];
+            if (direction) {
+                event.preventDefault();
+                if (!event.repeat) this.steer({ x: direction[0], y: direction[1] });
+            } else if ([" ", "Escape", "p", "P"].includes(event.key)) {
+                event.preventDefault();
+                if (event.repeat) return;
+                if (this.state === "ready" || this.state === "game_over") { if (event.key === " ") this.startGame(); }
+                else this.togglePause();
+            } else if (event.key.toLowerCase() === "r" && ["ready", "game_over"].includes(this.state)) {
+                event.preventDefault();
+                if (!event.repeat) this.startGame();
             }
+        });
+        document.addEventListener("arcade:screenchange", () => this.syncActivity());
+        document.addEventListener("visibilitychange", () => this.syncActivity());
+        document.addEventListener("arcade:pause", event => { if (event.detail?.gameId === "snake") this.pauseGame(); });
+        window.addEventListener("blur", () => { if (this.isActiveScreen()) this.pauseGame(); });
+        this.ui.startBtn?.addEventListener("click", () => this.startGame());
+        this.ui.pauseBtn?.addEventListener("click", () => this.togglePause());
+        this.ui.overlayPrimary?.addEventListener("click", () => this.state === "paused" ? this.resumeGame() : this.startGame());
+        this.ui.overlaySecondary?.addEventListener("click", () => this.finishRun("Run complete", "A good moment for a fresh start."));
+        for (const control of [this.ui.modeSelect, this.ui.speedSelect, this.ui.levelSelect]) {
+            control?.addEventListener("change", () => {
+                if (!["ready", "game_over"].includes(this.state)) return;
+                this.readSettings();
+                this.resetGame();
+                this.showStateOverlay();
+                this.draw();
+            });
+        }
+        this.ui.skinSelect?.addEventListener("change", () => {
+            this.skinIndex = Number(this.ui.skinSelect.value);
+            this.draw();
+        });
+        const vectors = { up: { x: 0, y: -1 }, down: { x: 0, y: 1 }, left: { x: -1, y: 0 }, right: { x: 1, y: 0 } };
+        document.querySelectorAll('[data-snake-direction]').forEach(button => {
+            const turn = () => { this.steer(vectors[button.dataset.snakeDirection]); this.canvas.focus({ preventScroll: true }); };
+            button.addEventListener("pointerdown", event => { event.preventDefault(); turn(); });
+            button.addEventListener("click", event => { if (event.detail === 0) turn(); });
         });
     }
 
     isActiveScreen() {
-        const screen = document.getElementById("snake-screen");
-        return !!(screen && screen.classList.contains("active"));
+        return document.getElementById("snake-screen")?.classList.contains("active");
+    }
+
+    steer(direction) {
+        if (["running", "countdown"].includes(this.state)) this.snake?.changeDirection(direction);
     }
 
     addTouchControls() {
-        let startX = 0;
-        let startY = 0;
-        let tracking = false;
-        const threshold = 18;
-
-        const startHandler = (e) => {
-            if (!this.isActiveScreen()) return;
-            if (e.touches.length !== 1) return;
-            const t = e.touches[0];
-            startX = t.clientX;
-            startY = t.clientY;
-            tracking = true;
+        let gesture = null;
+        const move = event => {
+            if (!gesture || event.pointerId !== gesture.id) return;
+            const dx = event.clientX - gesture.x;
+            const dy = event.clientY - gesture.y;
+            if (Math.max(Math.abs(dx), Math.abs(dy)) < 18) return;
+            this.steer(Math.abs(dx) > Math.abs(dy) ? { x: Math.sign(dx), y: 0 } : { x: 0, y: Math.sign(dy) });
+            gesture.x = event.clientX;
+            gesture.y = event.clientY;
         };
+        this.canvas.addEventListener("pointerdown", event => {
+            if (event.button !== 0 || !this.isActiveScreen()) return;
+            gesture = { id: event.pointerId, x: event.clientX, y: event.clientY };
+            this.canvas.setPointerCapture(event.pointerId);
+            this.canvas.focus({ preventScroll: true });
+        });
+        this.canvas.addEventListener("pointermove", move);
+        this.canvas.addEventListener("pointerup", event => { move(event); gesture = null; });
+        this.canvas.addEventListener("pointercancel", () => { gesture = null; });
+    }
 
-        const endHandler = (e) => {
-            if (!tracking) return;
-            tracking = false;
-            if (!this.isActiveScreen()) return;
-            if (!this.snake) return;
-            const t = e.changedTouches[0];
-            const dx = t.clientX - startX;
-            const dy = t.clientY - startY;
-            if (Math.max(Math.abs(dx), Math.abs(dy)) < threshold) return;
+    readSettings() {
+        this.mode = this.ui.modeSelect?.value || "Classic";
+        this.speedLevel = Number(this.ui.speedSelect?.value || 2);
+        this.levelIndex = Number(this.ui.levelSelect?.value || 0);
+        this.skinIndex = Number(this.ui.skinSelect?.value || 0);
+    }
 
-            const absX = Math.abs(dx);
-            const absY = Math.abs(dy);
-            if (absX > absY) {
-                this.snake.changeDirection({ x: dx > 0 ? 1 : -1, y: 0 });
-            } else {
-                this.snake.changeDirection({ x: 0, y: dy > 0 ? 1 : -1 });
-            }
-            e.preventDefault();
-        };
+    startGame() {
+        this.readSettings();
+        this.resetGame();
+        this.state = "countdown";
+        this.countdownRemaining = 1.5;
+        this.lastFrame = null;
+        this.showStateOverlay();
+        this.updateUI();
+        this.canvas.focus({ preventScroll: true });
+        this.scheduleFrame();
+    }
 
-        const moveHandler = (e) => {
-            if (tracking && this.isActiveScreen()) {
-                e.preventDefault();
-            }
-        };
+    pauseGame() {
+        if (!["running", "countdown"].includes(this.state)) return;
+        this.state = "paused";
+        this.snake.directionQueue = [];
+        this.snake.pendingDirection = { ...this.snake.direction };
+        this.moveAcc = 0;
+        this.showStateOverlay();
+        this.updateUI();
+        this.stopLoop();
+        this.draw();
+    }
 
-        this.canvas.addEventListener("touchstart", startHandler, { passive: true });
-        this.canvas.addEventListener("touchend", endHandler, { passive: false });
-        this.canvas.addEventListener("touchmove", moveHandler, { passive: false });
+    resumeGame() {
+        if (this.state !== "paused") return;
+        this.state = "countdown";
+        this.countdownRemaining = 1;
+        this.lastFrame = null;
+        this.showStateOverlay();
+        this.updateUI();
+        this.canvas.focus({ preventScroll: true });
+        this.scheduleFrame();
+    }
+
+    togglePause() {
+        if (this.state === "paused") this.resumeGame();
+        else this.pauseGame();
+    }
+
+    scheduleFrame() {
+        if (this.rafId !== null || !this.isActiveScreen() || document.hidden) return;
+        this.rafId = requestAnimationFrame(now => {
+            this.rafId = null;
+            const dt = this.lastFrame === null ? 0 : Math.min((now - this.lastFrame) / 1000, 0.05);
+            this.lastFrame = now;
+            this.update(dt);
+            this.draw();
+            if (["running", "countdown"].includes(this.state) || this.particles.length) this.scheduleFrame();
+        });
+    }
+
+    stopLoop() {
+        if (this.rafId !== null) cancelAnimationFrame(this.rafId);
+        this.rafId = null;
+        this.lastFrame = null;
+    }
+
+    syncActivity() {
+        if (!this.isActiveScreen() || document.hidden) { this.pauseGame(); this.stopLoop(); return; }
+        this.lastFrame = null;
+        this.draw();
+        this.scheduleFrame();
+    }
+
+    showFeedback(text) {
+        this.feedbackRemaining = 2.4;
+        if (this.ui.feedback) { this.ui.feedback.textContent = text; this.ui.feedback.classList.add("visible"); }
+    }
+
+    showStateOverlay() {
+        const ui = this.ui;
+        if (!ui.overlay) return;
+        ui.overlay.hidden = this.state === "running";
+        if (this.state !== "running") ui.feedback?.classList.remove("visible");
+        ui.resultStats.hidden = this.state !== "game_over";
+        ui.overlaySecondary.hidden = this.state !== "paused";
+        ui.overlayPrimary.hidden = this.state === "countdown";
+        ui.overlayTip.hidden = this.state === "countdown";
+        ui.overlay.classList.toggle("is-countdown", this.state === "countdown");
+        const content = {
+            ready: ["A fresh start", "Find your rhythm.", "Collect fruit, leave room to turn, and make every move count.", "Start run →"],
+            paused: ["Take a breath", "Your run is waiting.", "Your score and position are saved. Resume when you’re ready.", "Resume →"],
+            game_over: ["That’s a wrap", this.resultTitle || "Run complete", this.resultReason, "Try again →"],
+            countdown: ["Get ready", String(Math.ceil(this.countdownRemaining * 2)), "Find your first turn.", ""],
+        }[this.state];
+        if (content) [ui.overlayEyebrow.textContent, ui.overlayTitle.textContent, ui.overlayDesc.textContent, ui.overlayPrimary.textContent] = content;
+        if (this.state === "game_over") {
+            ui.resultStats.replaceChildren(...[["Score", this.score], ["Fruit", this.fruitCount], ["Time", this.formatTime()]].map(([label, value]) => {
+                const item = document.createElement("div");
+                const number = document.createElement("strong"); number.textContent = value;
+                const caption = document.createElement("span"); caption.textContent = label;
+                item.append(number, caption); return item;
+            }));
+        }
+    }
+
+    formatTime() {
+        const seconds = Math.floor(this.elapsedTime);
+        return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+    }
+
+    collectFruit(isGolden) {
+        this.fruitCount += 1;
+        this.score += isGolden ? 40 : 10;
+        if (this.fruitCount % 5 === 0) {
+            this.score += 25;
+            this.showFeedback("Harvest complete · +25 bonus");
+            window.ArcadeFeedback?.play("combo");
+        } else {
+            this.showFeedback(isGolden ? "Golden find · +40" : "+10 · Keep growing");
+            window.ArcadeFeedback?.play("score");
+        }
+        if (this.score > this.highscore) { this.highscore = this.score; saveHighscore(this.highscore); }
+        this.updateUI();
     }
 
     toggleMode() {
@@ -680,56 +815,67 @@ class SnakeGame {
     }
 
     updateUI() {
-        const {
-            modeLabel,
-            speedLabel,
-            levelLabel,
-            scoreLabel,
-            highscoreLabel,
-            skinLabel,
-            skinNameLabel,
-            statusLabel,
-        } = this.ui;
+        const ui = this.ui;
+        if (ui.scoreLabel) ui.scoreLabel.textContent = String(this.score);
+        if (ui.highscoreLabel) ui.highscoreLabel.textContent = String(this.highscore);
+        if (ui.fruitCount) ui.fruitCount.textContent = String(this.fruitCount);
+        if (ui.runTime) ui.runTime.textContent = this.formatTime();
+        if (ui.stateBadge) ui.stateBadge.textContent = { ready: "Ready", countdown: "Get ready", running: "In play", paused: "Paused", game_over: "Run complete" }[this.state];
+        if (ui.startBtn) ui.startBtn.textContent = ["ready", "game_over"].includes(this.state) ? "Start run" : "New run";
+        if (ui.pauseBtn) { ui.pauseBtn.disabled = ["ready", "game_over"].includes(this.state); ui.pauseBtn.textContent = this.state === "paused" ? "Resume" : "Pause"; }
+        for (const control of [ui.modeSelect, ui.speedSelect, ui.levelSelect]) if (control) control.disabled = !["ready", "game_over"].includes(this.state);
+        const progress = this.fruitCount % 5;
+        if (ui.goalCount) ui.goalCount.textContent = `${progress} / 5 fruit`;
+        if (ui.goalLabel) ui.goalLabel.textContent = this.fruitCount < 5 ? "First harvest" : `Harvest ${Math.floor(this.fruitCount / 5) + 1}`;
+        if (ui.goalFill) ui.goalFill.style.width = `${progress * 20}%`;
+        if (ui.goalProgress) ui.goalProgress.setAttribute("aria-valuenow", String(progress));
+        if (ui.statusLabel) {
+            ui.statusLabel.textContent = this.activeSpeedEffect ? `${this.activeSpeedEffect === "slow" ? "Slowed" : "Boosted"} · ${Math.ceil(this.speedEffectTime)}s left` : {
+                ready: "Choose your setup, then start.", countdown: "A moment to find your bearings.", running: "Every 5 fruit earns a harvest bonus.", paused: "Your progress is safe.", game_over: "A fresh run is one click away.",
+            }[this.state];
+        }
+    }
 
-        if (modeLabel) modeLabel.textContent = this.mode;
-        if (speedLabel) speedLabel.textContent = String(this.speedLevel);
-        if (levelLabel) levelLabel.textContent = this.currentLevel.name;
-        if (scoreLabel) scoreLabel.textContent = String(this.score);
-        if (highscoreLabel) highscoreLabel.textContent = String(this.highscore);
-        if (skinLabel) skinLabel.textContent = `Skin: ${this.currentSkin.name}`;
-        if (skinNameLabel) skinNameLabel.textContent = this.currentSkin.name;
-
-        let status = "Normal";
-        if (this.activeSpeedEffect === "slow") status = "Slowed";
-        if (this.activeSpeedEffect === "fast") status = "Boosted";
-        if (statusLabel) statusLabel.textContent = status;
+    finishRun(title, reason) {
+        if (this.state === "game_over") return;
+        this.state = "game_over";
+        this.resultTitle = title;
+        this.resultReason = reason;
+        if (this.score > this.highscore) { this.highscore = this.score; saveHighscore(this.highscore); }
+        this.showStateOverlay();
+        this.updateUI();
+        this.scheduleFrame();
     }
 
     onGameOver() {
         this.spawnDeathParticles();
-        this.state = "game_over";
-        if (this.score > this.highscore) {
-            this.highscore = this.score;
-            saveHighscore(this.highscore);
-        }
-        this.updateUI();
-        // 简单：直接重开一局，但保留一点停顿感
-        setTimeout(() => {
-            this.resetGame();
-            this.state = "running";
-        }, 600);
+        const reason = { wall: "The edge caught you. Try Portal mode to wrap around the field.", tail: "You crossed your own path. Leave a little more room for the next turn.", obstacle: "That obstacle ended the run. Follow the open lanes and plan ahead." }[this.snake.deathReason] || "Every run teaches you the next turn. Ready for another?";
+        this.finishRun("A good run.", reason);
+        window.ArcadeFeedback?.play("lose");
     }
 
     // ---------- Update & Draw ----------
 
     update(dt) {
-        this.elapsedTime += dt;
+        if (this.feedbackRemaining > 0) {
+            this.feedbackRemaining -= dt;
+            if (this.feedbackRemaining <= 0) this.ui.feedback?.classList.remove("visible");
+        }
 
         // 粒子
         this.particles.forEach(p => p.update(dt));
         this.particles = this.particles.filter(p => p.life > 0);
 
+        if (this.state === "countdown") {
+            this.countdownRemaining = Math.max(0, this.countdownRemaining - dt);
+            if (this.countdownRemaining < 0.000001) this.countdownRemaining = 0;
+            if (this.ui.overlayTitle) this.ui.overlayTitle.textContent = String(Math.max(1, Math.ceil(this.countdownRemaining * 2)));
+            if (this.countdownRemaining === 0) { this.state = "running"; this.showStateOverlay(); this.updateUI(); }
+            return;
+        }
         if (this.state !== "running" || !this.snake) return;
+        this.elapsedTime += dt;
+        this.updateUI();
 
         if (this.activeSpeedEffect) {
             this.speedEffectTime -= dt;
@@ -761,11 +907,11 @@ class SnakeGame {
         }
 
         // 速度控制
-        let baseFactor = { 1: 0.8, 2: 1.0, 3: 1.35 }[this.speedLevel];
+        let baseFactor = ({ 1: 6, 2: 8.5, 3: 11 }[this.speedLevel] + Math.min(Math.floor(this.fruitCount / 5) * 0.45, 2.25)) / FPS_BASE;
         if (this.activeSpeedEffect === "slow") {
-            baseFactor *= 0.6;
+            baseFactor *= 0.75;
         } else if (this.activeSpeedEffect === "fast") {
-            baseFactor *= 1.6;
+            baseFactor *= 1.35;
         }
 
         const moveInterval = Math.max(0.05, 1.0 / (FPS_BASE * baseFactor));
@@ -790,6 +936,7 @@ class SnakeGame {
                 p => p.x === head.x && p.y === head.y
             );
             if (hitObstacle) {
+                this.snake.deathReason = "obstacle";
                 this.snake.alive = false;
                 this.onGameOver();
                 return;
@@ -798,18 +945,19 @@ class SnakeGame {
             // 普通 food
             if (this.food && head.x === this.food.pos.x && head.y === this.food.pos.y) {
                 this.snake.grow(2);
-                this.score += 10;
-                this.spawnFood(false);
-                this.updateUI();
+                this.collectFruit(false);
+                if (!this.spawnFood(false)) {
+                    this.finishRun("You filled the field!", "Every reachable square is yours. What a harvest.");
+                    window.ArcadeFeedback?.play("win");
+                }
                 this.spawnEatParticles(head);
             }
 
             // super food
             if (this.superFood && head.x === this.superFood.pos.x && head.y === this.superFood.pos.y) {
                 this.snake.grow(5);
-                this.score += 40;
+                this.collectFruit(true);
                 this.superFood = null;
-                this.updateUI();
                 this.spawnEatParticles(head, true);
             }
 
@@ -931,51 +1079,6 @@ class SnakeGame {
         // 粒子
         this.particles.forEach(p => p.draw(ctx));
 
-        // 底部 panel
-        const panelY = GRID_HEIGHT * CELL_SIZE;
-        ctx.fillStyle = colorToCss(PANEL_COLOR, 0.96);
-        ctx.fillRect(0, panelY, CANVAS_WIDTH, PANEL_HEIGHT);
-
-        ctx.font = "14px system-ui, sans-serif";
-        ctx.fillStyle = TEXT_COLOR;
-        ctx.textBaseline = "top";
-
-        ctx.fillText(`Mode: ${this.mode}`, 16, panelY + 8);
-        ctx.fillText(`Speed: ${this.speedLevel}`, 16, panelY + 28);
-        ctx.fillText(`Level: ${this.currentLevel.name}`, 16, panelY + 48);
-
-        ctx.fillStyle = ACCENT_COLOR;
-        ctx.textAlign = "right";
-        ctx.fillText(`Score: ${this.score}`, CANVAS_WIDTH - 16, panelY + 8);
-
-        ctx.fillStyle = TEXT_COLOR;
-        ctx.fillText(`Best: ${this.highscore}`, CANVAS_WIDTH - 16, panelY + 28);
-        ctx.fillText(`Skin: ${this.currentSkin.name}`, CANVAS_WIDTH - 16, panelY + 48);
-
-        ctx.textAlign = "center";
-        ctx.fillStyle = "#b4b4d8";
-        let status = "Status: Normal";
-        if (this.activeSpeedEffect === "slow") status = "Status: Slowed";
-        if (this.activeSpeedEffect === "fast") status = "Status: Boosted";
-        ctx.fillText(
-            status,
-            CANVAS_WIDTH / 2,
-            panelY + 8
-        );
-
-        if (this.state === "paused") {
-            const overlayColor = "rgba(0,0,0,0.55)";
-            ctx.fillStyle = overlayColor;
-            ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-            ctx.fillStyle = TEXT_COLOR;
-            ctx.font = "bold 26px system-ui, sans-serif";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText("Paused", CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 12);
-            ctx.font = "14px system-ui, sans-serif";
-            ctx.fillText("Press ESC to resume", CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 12);
-        }
-
         ctx.restore();
     }
 }
@@ -986,46 +1089,47 @@ let snakeGame = null;
 
 function initSnakeGame() {
     const canvas = document.getElementById("snake-canvas");
-    if (!canvas) return;
+    if (!canvas || snakeGame) return;
+    canvas.tabIndex = -1;
 
-    const uiRefs = {
-        modeLabel: document.getElementById("mode-label"),
-        speedLabel: document.getElementById("speed-label"),
-        levelLabel: document.getElementById("level-label"),
-        scoreLabel: document.getElementById("score-label"),
-        highscoreLabel: document.getElementById("highscore-label"),
-        skinLabel: document.getElementById("skin-label"),
-        skinNameLabel: document.getElementById("skin-name-label"),
-        statusLabel: document.getElementById("status-label"),
+    const ids = {
+        scoreLabel: "score-label", highscoreLabel: "highscore-label", statusLabel: "status-label",
+        fruitCount: "snake-fruit-count", runTime: "snake-run-time", stateBadge: "snake-state-badge",
+        startBtn: "snake-start-btn", pauseBtn: "snake-pause-btn", modeSelect: "snake-mode-select",
+        speedSelect: "snake-speed-select", levelSelect: "snake-level-select", skinSelect: "snake-skin-select",
+        overlay: "snake-overlay", overlayEyebrow: "snake-overlay-eyebrow", overlayTitle: "snake-overlay-title",
+        overlayDesc: "snake-overlay-desc", overlayPrimary: "snake-overlay-primary", overlaySecondary: "snake-overlay-secondary",
+        overlayTip: "snake-overlay-tip", resultStats: "snake-result-stats", feedback: "snake-feedback",
+        goalLabel: "snake-goal-label", goalCount: "snake-goal-count", goalFill: "snake-goal-fill", goalProgress: "snake-goal-progress",
     };
-
+    const uiRefs = Object.fromEntries(Object.entries(ids).map(([key, id]) => [key, document.getElementById(id)]));
     snakeGame = new SnakeGame(canvas, uiRefs);
     snakeGame.resetGame();
+    snakeGame.showStateOverlay();
+    snakeGame.syncActivity();
 
-    let lastTime = performance.now();
-    function loop(now) {
-        const dt = (now - lastTime) / 1000;
-        lastTime = now;
-        if (snakeGame) {
-            snakeGame.update(dt);
-            snakeGame.draw();
-        }
-        requestAnimationFrame(loop);
-    }
-    requestAnimationFrame(loop);
-
-    // 绑定右侧按钮
-    document.getElementById("toggle-mode-btn")?.addEventListener("click", () => {
-        snakeGame.toggleMode();
-    });
-    document.getElementById("toggle-speed-btn")?.addEventListener("click", () => {
-        snakeGame.toggleSpeed();
-    });
-    document.getElementById("toggle-level-btn")?.addEventListener("click", () => {
-        snakeGame.toggleLevel();
-    });
-    document.getElementById("toggle-skin-btn")?.addEventListener("click", () => {
-        snakeGame.toggleSkin();
-    });
+    window.snakeGame = snakeGame;
 }
 
+const previousSnakeTextHook = window.render_game_to_text;
+window.render_game_to_text = function () {
+    if (document.body.dataset.game === "snake" && snakeGame) {
+        return JSON.stringify({ game: "snake", state: snakeGame.state, score: snakeGame.score, best: snakeGame.highscore,
+            fruit: snakeGame.fruitCount, elapsed: Number(snakeGame.elapsedTime.toFixed(2)), mode: snakeGame.mode,
+            arena: snakeGame.currentLevel.name, speed: snakeGame.speedLevel, snake: snakeGame.snake?.body,
+            direction: snakeGame.snake?.direction, queuedTurns: snakeGame.snake?.directionQueue,
+            food: snakeGame.food?.pos, goldenFood: snakeGame.superFood?.pos || null,
+            powerups: snakeGame.powerups.map(p => ({ ...p.pos, kind: p.kind })), effect: snakeGame.activeSpeedEffect,
+            obstacles: snakeGame.currentLevel.obstacles,
+            coordinates: "Grid origin is top left; x increases right, y increases down. Board is 26 × 22 cells." });
+    }
+    return typeof previousSnakeTextHook === "function" ? previousSnakeTextHook() : JSON.stringify({ game: document.body.dataset.game });
+};
+const previousSnakeTimeHook = window.advanceTime;
+window.advanceTime = function (ms) {
+    if (document.body.dataset.game === "snake" && snakeGame) {
+        const steps = Math.max(1, Math.ceil(ms / (1000 / 60)));
+        for (let step = 0; step < steps; step++) snakeGame.update(ms / steps / 1000);
+        snakeGame.draw();
+    } else if (typeof previousSnakeTimeHook === "function") previousSnakeTimeHook(ms);
+};

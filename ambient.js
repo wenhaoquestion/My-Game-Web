@@ -11,9 +11,10 @@
     let dpr = 1;
     let particles = [];
     let rafId = null;
+    let accent = readAccentColor();
 
     function isAmbientOn() {
-        return document.body.dataset.ambient !== "off" && !prefersReducedMotion.matches;
+        return document.body.dataset.ambient !== "off" && !prefersReducedMotion.matches && !document.hidden;
     }
 
     function readAccentColor() {
@@ -49,7 +50,6 @@
             return;
         }
 
-        const accent = readAccentColor();
         ctx.fillStyle = accent;
         ctx.shadowColor = accent;
         ctx.shadowBlur = 14;
@@ -71,6 +71,7 @@
     }
 
     function startOrStop() {
+        accent = readAccentColor();
         if (isAmbientOn()) {
             if (!rafId) {
                 rafId = window.requestAnimationFrame(draw);
@@ -91,6 +92,7 @@
         resizeCanvas();
         startOrStop();
     });
+    document.addEventListener("visibilitychange", startOrStop);
 
     if (typeof prefersReducedMotion.addEventListener === "function") {
         prefersReducedMotion.addEventListener("change", startOrStop);

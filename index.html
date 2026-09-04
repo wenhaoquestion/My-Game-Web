@@ -2,216 +2,155 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
-    <title>Wenhao's Web Arcade</title>
+    <title>Wenhao’s Arcade — A little play. A better day.</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="12 classic browser games and clever tools. Play Snake, Tetris, 2048, Sudoku, Chess and more. No downloads. Just play." />
+    <meta name="theme-color" content="#101111" />
     <link rel="stylesheet" href="style.css" />
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%235aaaff'/%3E%3Cpath d='M32 12 44 32 32 52 20 32Z' fill='%23fff'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="styles/shell.css" />
+    <link rel="stylesheet" href="styles/games.css" />
+    <link rel="stylesheet" href="styles/play-experience.css" />
+    <link rel="stylesheet" href="styles/tetris-play.css" />
+    <link rel="stylesheet" href="styles/puzzle-play.css" />
+    <link rel="stylesheet" href="styles/arcade-play.css" />
+    <link rel="stylesheet" href="styles/strategy-play.css" />
+    <link rel="preload" href="assets/snake-feature.webp" as="image" />
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+    <script src="catalog.js" defer></script>
+    <script src="main.js" defer></script>
+    <script src="game-experience.js" defer></script>
+    <script src="ambient.js" defer></script>
 </head>
-<body data-theme="nebula" data-ambient="on" data-game="menu">
-
+<body data-theme="nebula" data-ambient="off" data-game="menu">
+<a class="skip-link" href="#collection-title">Skip to games</a>
 <canvas id="ambient-canvas" aria-hidden="true"></canvas>
-
 <div class="app-shell">
     <header class="app-header">
-        <div class="header-brand">
-            <div class="brand-icon">◈</div>
-            <div class="brand-text">
-                <h1>Wenhao's Arcade</h1>
-                <p class="brand-sub">12 games · Play now</p>
-            </div>
-        </div>
+        <a class="header-brand" href="#/" aria-label="Wenhao’s Arcade home">
+            <svg class="brand-icon" viewBox="0 0 32 32" aria-hidden="true"><path fill="currentColor" d="M13 0h6v6h-6zM7 6h6v6H7zm12 0h6v6h-6zM1 12h6v7H1zm24 0h6v7h-6zM7 19h6v6H7zm12 0h6v6h-6zM13 25h6v6h-6zm0-12h6v6h-6z"/></svg>
+            <span>Wenhao’s Arcade</span>
+        </a>
+        <nav class="main-nav" aria-label="Main navigation">
+            <a href="#/" data-library-nav="discover" aria-current="page">Discover</a>
+            <a href="#/favorites" data-library-nav="favorites">Favorites<span id="favorites-count"></span></a>
+        </nav>
         <div class="header-controls">
-            <div class="theme-picker">
-                <span class="ctrl-label">Theme</span>
-                <div class="theme-swatches">
-                    <button class="swatch active" data-theme="nebula" title="Nebula"></button>
-                    <button class="swatch" data-theme="solaris" title="Solaris"></button>
-                    <button class="swatch" data-theme="aqua" title="Aqua Rift"></button>
-                    <button class="swatch" data-theme="ember" title="Ember"></button>
-                    <button class="swatch" data-theme="verdant" title="Verdant"></button>
-                </div>
+            <div class="theme-swatches" role="group" aria-label="Color theme">
+                <button class="swatch" data-theme="nebula" title="Nebula" aria-label="Nebula theme" aria-pressed="true"></button>
+                <button class="swatch" data-theme="solaris" title="Solaris" aria-label="Solaris theme" aria-pressed="false"></button>
+                <button class="swatch" data-theme="aqua" title="Aqua Rift" aria-label="Aqua Rift theme" aria-pressed="false"></button>
+                <button class="swatch" data-theme="ember" title="Ember" aria-label="Ember theme" aria-pressed="false"></button>
+                <button class="swatch" data-theme="verdant" title="Verdant" aria-label="Verdant theme" aria-pressed="false"></button>
             </div>
-            <button id="ambient-toggle-btn" class="ctrl-btn">
-                <span class="ctrl-btn-icon">✦</span>
-                <span class="ctrl-btn-label">Aura On</span>
-            </button>
+            <button id="ambient-toggle-btn" class="aura-button" aria-pressed="false"><span class="aura-dot" aria-hidden="true"></span><span class="ctrl-btn-label">Aura off</span></button>
         </div>
     </header>
-
-    <!-- MENU -->
+    <div id="launch-feedback" class="launch-feedback" role="status" hidden><span id="launch-message"></span><button id="launch-retry" class="btn" hidden>Try again</button></div>
     <main id="menu-screen" class="screen active">
-        <section class="menu-hero">
-            <p class="menu-hero-label">ARCADE COLLECTION</p>
-            <h2 class="menu-hero-title">Choose Your <span class="gradient-text">Game</span></h2>
+        <div id="discovery-intro">
+            <section class="welcome" aria-labelledby="welcome-title">
+                <h1 id="welcome-title">A little play. A better day.</h1>
+                <p>Your favorite classics, one click away. No downloads. Just play.</p>
+            </section>
+            <section class="featured-game" aria-labelledby="featured-title">
+                <img src="assets/snake-feature.webp" width="2048" height="683" alt="" class="featured-image" fetchpriority="high" />
+                <div class="featured-copy">
+                    <h2 id="featured-title">Neon Snake</h2>
+                    <p>A familiar classic. A fresh high score.</p>
+                    <a href="#/snake" class="feature-button">Play now <span aria-hidden="true">↗</span></a>
+                </div>
+            </section>
+        </div>
+        <section class="collection" aria-labelledby="collection-title">
+            <div class="collection-toolbar">
+                <div><h2 id="collection-title" tabindex="-1">The collection</h2><p id="game-count" aria-live="polite" aria-atomic="true">12 games &amp; tools</p></div>
+                <div class="search-field" role="search">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="7.5"/><path d="m16 16 5 5"/></svg>
+                    <label for="game-search" class="sr-only">Find a game</label>
+                    <input id="game-search" type="search" placeholder="Find a game…" autocomplete="off" spellcheck="false" />
+                    <button id="clear-search" aria-label="Clear search" title="Clear search">×</button>
+                </div>
+            </div>
+            <div class="collection-filters" role="group" aria-label="Filter games">
+                <button data-filter="all" aria-pressed="true">All games</button>
+                <button data-filter="arcade" aria-pressed="false">Arcade</button>
+                <button data-filter="puzzle" aria-pressed="false">Puzzle</button>
+                <button data-filter="strategy" aria-pressed="false">Strategy</button>
+                <button data-filter="tools" aria-pressed="false">Tools</button>
+                <button data-filter="recent" aria-pressed="false">Recently played</button>
+            </div>
+            <div id="game-library" class="library-grid"></div>
+            <div id="library-empty" class="library-empty" hidden>
+                <svg viewBox="0 0 48 48" aria-hidden="true"><rect x="6" y="6" width="14" height="14" rx="3"/><rect x="28" y="6" width="14" height="14" rx="3"/><rect x="6" y="28" width="14" height="14" rx="3"/><path d="M35 28v14m-7-7h14"/></svg>
+                <h3 id="empty-title">No games found</h3>
+                <p id="empty-description">Try a different name, or explore the whole collection.</p>
+                <button id="reset-library" class="feature-button">Explore all games <span aria-hidden="true">↗</span></button>
+            </div>
+            <noscript><p class="launch-feedback">Enable JavaScript to explore the collection and play the games.</p></noscript>
         </section>
-
-        <div class="category-section">
-            <h3 class="category-label">⚡ Arcade</h3>
-            <div class="game-grid">
-                <article class="game-card" onclick="switchToSnake()">
-                    <div class="card-glow"></div>
-                    <div class="card-icon">🐍</div>
-                    <div class="card-body">
-                        <h2 class="card-title">Neon Snake</h2>
-                        <p class="card-desc">Classic snake with neon glow, skins, power-ups and obstacle levels.</p>
-                        <div class="card-tags"><span class="tag">Arcade</span><span class="tag">Power-ups</span></div>
-                    </div>
-                    <div class="card-play"><span class="play-arrow">▶</span></div>
-                </article>
-                <article class="game-card" onclick="switchToTetris()">
-                    <div class="card-glow"></div>
-                    <div class="card-icon">🟪</div>
-                    <div class="card-body">
-                        <h2 class="card-title">Prismatic Tetris</h2>
-                        <p class="card-desc">Multi-mode Tetris with combos, energy surges and neon light effects.</p>
-                        <div class="card-tags"><span class="tag">Arcade</span><span class="tag">Endless</span></div>
-                    </div>
-                    <div class="card-play"><span class="play-arrow">▶</span></div>
-                </article>
-                <article class="game-card" onclick="switchToShooter()">
-                    <div class="card-glow"></div>
-                    <div class="card-icon">🚀</div>
-                    <div class="card-body">
-                        <h2 class="card-title">Neon Shooter</h2>
-                        <p class="card-desc">Blast through 5 sectors, defeat bosses and survive endless waves.</p>
-                        <div class="card-tags"><span class="tag">Shooter</span><span class="tag">Levels</span><span class="tag">Endless</span></div>
-                    </div>
-                    <div class="card-play"><span class="play-arrow">▶</span></div>
-                </article>
-            </div>
-        </div>
-
-        <div class="category-section">
-            <h3 class="category-label">🧩 Puzzle</h3>
-            <div class="game-grid">
-                <article class="game-card" onclick="switchTo2048()">
-                    <div class="card-glow"></div>
-                    <div class="card-icon">🔢</div>
-                    <div class="card-body">
-                        <h2 class="card-title">2048 Puzzle</h2>
-                        <p class="card-desc">Slide and merge tiles to reach 2048 with smooth animations.</p>
-                        <div class="card-tags"><span class="tag">Puzzle</span><span class="tag">Grid</span></div>
-                    </div>
-                    <div class="card-play"><span class="play-arrow">▶</span></div>
-                </article>
-                <article class="game-card" onclick="switchToMerge10()">
-                    <div class="card-glow"></div>
-                    <div class="card-icon">➕</div>
-                    <div class="card-body">
-                        <h2 class="card-title">合成10 · Merge 10</h2>
-                        <p class="card-desc">Select rectangles that add to 10, beat your custom countdown, and chase the best score.</p>
-                        <div class="card-tags"><span class="tag">Puzzle</span><span class="tag">Timer</span><span class="tag">Score Modes</span></div>
-                    </div>
-                    <div class="card-play"><span class="play-arrow">▶</span></div>
-                </article>
-                <article class="game-card" onclick="switchToTenHelper()">
-                    <div class="card-glow"></div>
-                    <div class="card-icon">🧮</div>
-                    <div class="card-body">
-                        <h2 class="card-title">合十消除助手</h2>
-                        <p class="card-desc">Edit a 16×10 board, solve merge-to-ten routes, and replay the strategy step by step.</p>
-                        <div class="card-tags"><span class="tag">Solver</span><span class="tag">Playback</span></div>
-                    </div>
-                    <div class="card-play"><span class="play-arrow">▶</span></div>
-                </article>
-                <article class="game-card" onclick="switchToSudoku()">
-                    <div class="card-glow"></div>
-                    <div class="card-icon">⊞</div>
-                    <div class="card-body">
-                        <h2 class="card-title">Prism Sudoku</h2>
-                        <p class="card-desc">Classic + Killer Sudoku with radiant cages and multi-tier difficulties.</p>
-                        <div class="card-tags"><span class="tag">Logic</span><span class="tag">Killer</span></div>
-                    </div>
-                    <div class="card-play"><span class="play-arrow">▶</span></div>
-                </article>
-                <article class="game-card" onclick="switchToCoin()">
-                    <div class="card-glow"></div>
-                    <div class="card-icon">🪙</div>
-                    <div class="card-body">
-                        <h2 class="card-title">Lucky Coin Toss</h2>
-                        <p class="card-desc">Flip a glowing coin, track streaks and log your lucky history.</p>
-                        <div class="card-tags"><span class="tag">Casual</span><span class="tag">Quick Play</span></div>
-                    </div>
-                    <div class="card-play"><span class="play-arrow">▶</span></div>
-                </article>
-            </div>
-        </div>
-
-        <div class="category-section">
-            <h3 class="category-label">♟ Strategy &amp; Board</h3>
-            <div class="game-grid">
-                <article class="game-card" onclick="switchToGomoku()">
-                    <div class="card-glow"></div>
-                    <div class="card-icon">⚫</div>
-                    <div class="card-body">
-                        <h2 class="card-title">Five in a Row</h2>
-                        <p class="card-desc">Gomoku on a 15×15 board. Get 5 in a row to win. Play vs AI or a friend.</p>
-                        <div class="card-tags"><span class="tag">Strategy</span><span class="tag">AI</span><span class="tag">PvP</span></div>
-                    </div>
-                    <div class="card-play"><span class="play-arrow">▶</span></div>
-                </article>
-                <article class="game-card" onclick="switchToXiangqi()">
-                    <div class="card-glow"></div>
-                    <div class="card-icon">🀄</div>
-                    <div class="card-body">
-                        <h2 class="card-title">Chinese Chess</h2>
-                        <p class="card-desc">Full Xiangqi with all piece rules, flying general rule, and AI opponent.</p>
-                        <div class="card-tags"><span class="tag">Xiangqi</span><span class="tag">AI</span></div>
-                    </div>
-                    <div class="card-play"><span class="play-arrow">▶</span></div>
-                </article>
-                <article class="game-card" onclick="switchToChess()">
-                    <div class="card-glow"></div>
-                    <div class="card-icon">♔</div>
-                    <div class="card-body">
-                        <h2 class="card-title">Chess</h2>
-                        <p class="card-desc">Full chess: castling, en passant, pawn promotion, check and mate detection.</p>
-                        <div class="card-tags"><span class="tag">Chess</span><span class="tag">AI</span></div>
-                    </div>
-                    <div class="card-play"><span class="play-arrow">▶</span></div>
-                </article>
-                <article class="game-card" onclick="switchToPoker()">
-                    <div class="card-glow"></div>
-                    <div class="card-icon">🃏</div>
-                    <div class="card-body">
-                        <h2 class="card-title">Texas Hold'em Odds</h2>
-                        <p class="card-desc">Monte Carlo simulator — estimate win, tie and loss probability for any hand.</p>
-                        <div class="card-tags"><span class="tag">Card</span><span class="tag">Simulator</span></div>
-                    </div>
-                    <div class="card-play"><span class="play-arrow">▶</span></div>
-                </article>
-            </div>
-        </div>
     </main>
 
     <!-- SNAKE -->
-    <main id="snake-screen" class="screen">
+    <main id="snake-screen" class="screen" hidden>
         <div class="game-layout">
             <div class="game-topbar">
-                <button class="back-btn" onclick="switchToMenu()">← Back</button>
-                <div class="game-topbar-title"><h2>Neon Snake</h2><span class="subtitle">WASD / Arrow keys · ESC to pause · Swipe to turn</span></div>
-                <span id="skin-label" class="topbar-badge">Skin: Green</span>
+                <button class="back-btn" type="button">← All games</button>
+                <div class="game-topbar-title"><h2 tabindex="-1">Neon Snake</h2><span class="subtitle">One more turn. One more fruit. Find your rhythm.</span></div>
+                <span id="snake-state-badge" class="topbar-badge">Ready</span>
             </div>
-            <div class="game-main canvas-layout">
-                <canvas id="snake-canvas"></canvas>
-                <aside class="game-sidebar">
-                    <div class="info-card"><span class="info-label">Mode</span><p id="mode-label">Classic</p><button id="toggle-mode-btn" class="btn sm">Toggle</button></div>
-                    <div class="info-card"><span class="info-label">Speed</span><p id="speed-label">2</p><button id="toggle-speed-btn" class="btn sm">Toggle</button></div>
-                    <div class="info-card"><span class="info-label">Level</span><p id="level-label">Free Practice</p><button id="toggle-level-btn" class="btn sm">Toggle</button></div>
-                    <div class="info-card score-card"><span class="info-label">Score</span><p id="score-label" class="big-num">0</p><p class="muted-sm">Best: <span id="highscore-label">0</span></p></div>
-                    <div class="info-card"><span class="info-label">Skin</span><p id="skin-name-label">Green</p><button id="toggle-skin-btn" class="btn sm">Toggle</button></div>
-                    <div class="info-card"><span class="info-label">Status</span><p id="status-label">Normal</p></div>
+            <div class="game-main canvas-layout arcade-play-layout">
+                <div class="snake-play-stage">
+                    <div class="play-scorebar" aria-label="Run statistics">
+                        <div><span>Score</span><strong id="score-label">0</strong></div>
+                        <div><span>Best</span><strong id="highscore-label">0</strong></div>
+                        <div><span>Fruit</span><strong id="snake-fruit-count">0</strong></div>
+                        <div><span>Time</span><strong id="snake-run-time">0:00</strong></div>
+                    </div>
+                    <div class="snake-board-wrap">
+                        <canvas id="snake-canvas" tabindex="0" aria-label="Snake game board. Use arrow keys or WASD to turn. Space or P pauses."></canvas>
+                        <div id="snake-overlay" class="snake-play-overlay">
+                            <div class="snake-overlay-card">
+                                <span id="snake-overlay-eyebrow" class="play-eyebrow">A fresh start</span>
+                                <h3 id="snake-overlay-title">Find your rhythm.</h3>
+                                <p id="snake-overlay-desc">Collect fruit, leave room to turn, and make every move count.</p>
+                                <div id="snake-result-stats" class="snake-result-stats" hidden></div>
+                                <div class="play-button-row">
+                                    <button id="snake-overlay-primary" class="btn primary" type="button">Start run <span aria-hidden="true">→</span></button>
+                                    <button id="snake-overlay-secondary" class="btn ghost" type="button" hidden>End run</button>
+                                </div>
+                                <span id="snake-overlay-tip" class="play-key-hint">Arrow keys / WASD · Swipe or use the direction pad</span>
+                            </div>
+                        </div>
+                        <p id="snake-feedback" class="snake-feedback" role="status" aria-live="polite"></p>
+                    </div>
+                    <div class="snake-goal-row"><div><span id="snake-goal-label">First harvest</span><strong id="snake-goal-count">0 / 5 fruit</strong></div><span>Every 5 fruit earns +25</span></div>
+                    <div class="snake-goal-track" role="progressbar" aria-label="Next harvest bonus" aria-valuemin="0" aria-valuemax="5" aria-valuenow="0" id="snake-goal-progress"><span id="snake-goal-fill"></span></div>
+                    <div class="snake-input-row">
+                        <div class="snake-dpad" aria-label="Direction controls">
+                            <button type="button" data-snake-direction="up" aria-label="Turn up">↑</button>
+                            <button type="button" data-snake-direction="left" aria-label="Turn left">←</button>
+                            <button type="button" data-snake-direction="down" aria-label="Turn down">↓</button>
+                            <button type="button" data-snake-direction="right" aria-label="Turn right">→</button>
+                        </div>
+                        <p class="play-key-hint">Swipe on the board, or use the pad.<br>Space / P to pause · R to retry.</p>
+                    </div>
+                </div>
+                <aside class="game-sidebar snake-settings">
+                    <div class="info-card snake-run-actions"><span class="info-label">Your run</span><div class="play-button-row"><button id="snake-start-btn" class="btn primary" type="button">Start run</button><button id="snake-pause-btn" class="btn ghost" type="button" disabled>Pause</button></div><p id="status-label" class="muted-sm">Choose your setup, then start.</p></div>
+                    <div class="info-card"><label class="info-label" for="snake-mode-select">Edges</label><select id="snake-mode-select" class="game-select"><option value="Classic">Classic · avoid the walls</option><option value="Portal (Wrap)">Portal · wrap around</option></select><label class="info-label" for="snake-speed-select">Pace</label><select id="snake-speed-select" class="game-select"><option value="1">Easygoing</option><option value="2" selected>Steady</option><option value="3">Quick</option></select><label class="info-label" for="snake-level-select">Arena</label><select id="snake-level-select" class="game-select"><option value="0">Open field</option><option value="1">Box arena</option><option value="2">Crossroads</option><option value="3">Corridors</option></select><p class="muted-sm">Settings stay fixed during a run. End it from Pause to try a new setup.</p></div>
+                    <div class="info-card"><label class="info-label" for="snake-skin-select">Your color</label><select id="snake-skin-select" class="game-select"><option value="0">Mint</option><option value="1">Periwinkle</option><option value="2">Apricot</option></select></div>
+                    <div class="info-card snake-field-guide"><span class="info-label">Field guide</span><p><i class="snake-guide-dot fruit"></i><span>Fruit <strong>+10</strong></span></p><p><i class="snake-guide-dot gold"></i><span>Golden fruit <strong>+40</strong></span></p><p><i class="snake-guide-dot slow"></i><span>Slow / boost <strong>8 sec</strong></span></p><p class="muted-sm">Each harvest makes the pace a little quicker. Plan two turns ahead.</p></div>
                 </aside>
             </div>
         </div>
     </main>
 
     <!-- 2048 -->
-    <main id="game2048-screen" class="screen">
+    <main id="game2048-screen" class="screen" hidden>
         <div class="game-layout">
             <div class="game-topbar">
-                <button class="back-btn" onclick="switchToMenu()">← Back</button>
-                <div class="game-topbar-title"><h2>2048 Puzzle</h2><span class="subtitle">Arrow keys / WASD or swipe to move tiles</span></div>
+                <button class="back-btn" type="button">← All games</button>
+                <div class="game-topbar-title"><h2 tabindex="-1">2048 Puzzle</h2><span class="subtitle">Arrow keys / WASD or swipe to move tiles</span></div>
                 <span id="game2048-state-label" class="topbar-badge">Playing</span>
             </div>
             <div class="game-main canvas-layout">
@@ -232,8 +171,8 @@
                 <aside class="game-sidebar">
                     <div class="info-card score-card"><span class="info-label">Score</span><p id="game2048-score" class="big-num">0</p></div>
                     <div class="info-card score-card"><span class="info-label">Best</span><p id="game2048-best" class="big-num">0</p></div>
-                    <div class="info-card"><span class="info-label">Controls</span><p class="muted-sm">↑ ↓ ← → or WASD<br>Reach 2048 to win!</p></div>
-                    <div class="info-card"><button id="game2048-newgame-btn" class="btn primary full">New Game</button></div>
+                    <div class="info-card"><span class="info-label">Your run</span><p>Moves: <strong id="game2048-moves">0</strong></p><p id="game2048-feedback" class="puzzle-feedback" role="status">Make your first move.</p><p class="muted-sm">Arrow keys / WASD or swipe. U to undo. Saved automatically for each board size.</p></div>
+                    <div class="info-card"><div class="puzzle-actions"><button id="game2048-undo-btn" class="btn ghost" disabled>↶ Undo</button><button id="game2048-newgame-btn" class="btn primary">New Game</button></div></div>
                     <div class="info-card"><span class="info-label">Board Size</span><div class="btn-group"><button class="btn sm" data-board-size="3">3×3</button><button class="btn sm" data-board-size="4">4×4</button><button class="btn sm" data-board-size="5">5×5</button><button class="btn sm" data-board-size="6">6×6</button></div></div>
                 </aside>
             </div>
@@ -241,16 +180,18 @@
     </main>
 
     <!-- MERGE 10 -->
-    <main id="merge10-screen" class="screen">
+    <main id="merge10-screen" class="screen" hidden>
         <div class="game-layout">
             <div class="game-topbar">
-                <button class="back-btn" onclick="switchToMenu()">← Back</button>
-                <div class="game-topbar-title"><h2>合成10 · Merge 10</h2><span class="subtitle">Drag a rectangle whose visible numbers add to 10</span></div>
+                <button class="back-btn" type="button">← All games</button>
+                <div class="game-topbar-title"><h2 tabindex="-1">合成10 · Merge 10</h2><span class="subtitle">Drag a rectangle that adds to 10 · Or use arrows and Enter to mark two corners</span></div>
                 <span id="merge10-status" class="topbar-badge">Ready</span>
             </div>
             <div class="game-main canvas-layout merge10-play-layout">
+                <div class="puzzle-board-column">
                 <div class="merge10-stage">
                     <div id="merge10-board" class="merge10-board" aria-label="Merge 10 board"></div>
+                    <div id="merge10-selection-readout" class="puzzle-selection-readout" hidden></div>
                     <div class="board-overlay" id="merge10-overlay">
                         <div class="overlay-card">
                             <p class="overlay-title" id="merge10-overlay-title">Ready</p>
@@ -260,6 +201,11 @@
                             </div>
                         </div>
                     </div>
+                </div>
+                <div class="puzzle-board-tools">
+                    <div class="puzzle-actions"><button id="merge10-hint-btn" class="btn ghost" disabled>Show a hint</button><button id="merge10-undo-btn" class="btn ghost" disabled>↶ Undo move</button></div>
+                    <p id="merge10-feedback" class="puzzle-feedback" role="status">Start the board when you are ready.</p><p class="muted-sm" id="merge10-available"></p><p class="muted-sm">Hints and undo make this an assisted run. Your personal best stays unassisted.</p>
+                </div>
                 </div>
                 <aside class="game-sidebar">
                     <div class="info-card score-card"><span class="info-label" id="merge10-score-label">Score</span><p id="merge10-score" class="big-num">0</p><p class="muted-sm"><span id="merge10-best-label">Best</span>: <span id="merge10-best">0</span></p></div>
@@ -274,11 +220,11 @@
     </main>
 
     <!-- TEN HELPER -->
-    <main id="ten-helper-screen" class="screen">
+    <main id="ten-helper-screen" class="screen" hidden>
         <div class="game-layout">
             <div class="game-topbar">
-                <button class="back-btn" onclick="switchToMenu()">← Back</button>
-                <div class="game-topbar-title"><h2>合十消除助手</h2><span class="subtitle">Editable 16×10 board, browser solver, and animated playback</span></div>
+                <button class="back-btn" type="button">← All games</button>
+                <div class="game-topbar-title"><h2 tabindex="-1">合十消除助手</h2><span class="subtitle">Editable 16×10 board, browser solver, and animated playback</span></div>
                 <span id="ten-helper-status" class="topbar-badge">Ready</span>
             </div>
             <div class="game-main ten-helper-layout">
@@ -337,15 +283,16 @@
     </main>
 
     <!-- COIN -->
-    <main id="coin-screen" class="screen">
+    <main id="coin-screen" class="screen" hidden>
         <div class="game-layout">
             <div class="game-topbar">
-                <button class="back-btn" onclick="switchToMenu()">← Back</button>
-                <div class="game-topbar-title"><h2>Lucky Coin</h2><span class="subtitle">Predict the outcome · Press Space to flip</span></div>
+                <button class="back-btn" type="button">← All games</button>
+                <div class="game-topbar-title"><h2 tabindex="-1">Lucky Coin</h2><span class="subtitle">Predict the outcome · Press Space to flip</span></div>
                 <span id="coin-last-result" class="topbar-badge">Waiting…</span>
             </div>
             <div class="game-main coin-layout-inner">
                 <div class="coin-stage">
+                    <div class="coin-challenge-header"><label for="coin-mode">Your round</label><select id="coin-mode" class="game-select"><option value="free">Free play</option><option value="challenge">Ten-flip challenge</option></select><p id="coin-challenge-label" class="muted-sm" aria-live="polite">Free play · no round limit</p><progress id="coin-challenge-progress" class="play-progress" value="0" max="10" aria-label="Challenge progress" hidden></progress></div>
                     <!-- Prediction row -->
                     <div class="coin-predict-row">
                         <button class="coin-predict-btn" id="predict-heads" data-side="Heads">Predict Heads</button>
@@ -375,7 +322,7 @@
                         </div>
                         <div class="coin-shadow" id="coin-shadow"></div>
                     </div>
-                    <p class="coin-message" id="coin-message">Make your prediction and flip!</p>
+                    <p class="coin-message" id="coin-message" aria-live="polite">Make your prediction and flip!</p>
                     <div class="coin-actions">
                         <button id="flip-coin-btn" class="btn primary">Flip Coin</button>
                         <button id="reset-coin-btn" class="btn ghost">Reset</button>
@@ -405,14 +352,15 @@
     </main>
 
     <!-- SUDOKU -->
-    <main id="sudoku-screen" class="screen">
+    <main id="sudoku-screen" class="screen" hidden>
         <div class="game-layout">
             <div class="game-topbar">
-                <button class="back-btn" onclick="switchToMenu()">← Back</button>
-                <div class="game-topbar-title"><h2>Prism Sudoku</h2><span class="subtitle">1-9 to input · Backspace to erase · Arrow keys to navigate</span></div>
+                <button class="back-btn" type="button">← All games</button>
+                <div class="game-topbar-title"><h2 tabindex="-1">Prism Sudoku</h2><span class="subtitle">1-9 to input · Backspace to erase · Arrow keys to navigate</span></div>
                 <div class="topbar-badges"><span id="sudoku-mode-label" class="topbar-badge">Classic</span><span class="badge" id="sudoku-difficulty-label">Easy</span></div>
             </div>
             <div class="game-main sudoku-layout-inner">
+                <div class="puzzle-board-column">
                 <div class="sudoku-board-wrap">
                     <div id="sudoku-board" class="sudoku-board"></div>
                     <div class="sudoku-overlay" id="sudoku-overlay">
@@ -426,12 +374,17 @@
                         </div>
                     </div>
                 </div>
+                <div class="puzzle-board-tools">
+                    <div class="btn-group wrap puzzle-quick-actions"><button id="sudoku-undo-btn" class="btn ghost sm" disabled>↶ Undo</button><button id="sudoku-clear-btn" class="btn ghost sm">Erase</button><button id="sudoku-candidates-btn" class="btn ghost sm">Fill notes</button><button id="sudoku-hint-btn" class="btn ghost sm">Reveal cell</button></div>
+                    <p id="sudoku-feedback" class="puzzle-feedback" role="status">Select a cell to see its candidates.</p><p class="muted-sm">U to undo. Mistakes and revealed hints still count after undo.</p>
+                </div>
+                </div>
                 <aside class="game-sidebar">
                     <div class="info-card"><span class="info-label">Session</span><p>Time: <span id="sudoku-timer">0:00</span></p><p>Mistakes: <span id="sudoku-mistakes">0</span></p><p>Hints: <span id="sudoku-hints">0</span></p><p class="muted-sm" id="sudoku-state">Ready</p></div>
                     <div class="info-card"><span class="info-label">Mode</span><div class="btn-group"><button class="btn sm sudoku-mode-btn active" data-mode="classic">Classic</button><button class="btn sm sudoku-mode-btn" data-mode="killer">Killer</button></div></div>
                     <div class="info-card"><span class="info-label">Difficulty</span><div class="btn-group wrap"><button class="btn sm sudoku-difficulty-btn active" data-difficulty="easy">Easy</button><button class="btn sm sudoku-difficulty-btn" data-difficulty="medium">Medium</button><button class="btn sm sudoku-difficulty-btn" data-difficulty="hard">Hard</button><button class="btn sm sudoku-difficulty-btn" data-difficulty="expert">Expert</button></div></div>
                     <div class="info-card"><span class="info-label">Input</span><div class="btn-group"><button id="sudoku-note-toggle" class="btn sm">Notes: Off</button><button id="sudoku-auto-toggle" class="btn sm active">Auto-check: On</button></div><p class="muted-sm" style="margin-top:4px">N to toggle notes.</p></div>
-                    <div class="info-card"><span class="info-label">Actions</span><div class="btn-group wrap"><button id="sudoku-newgame-btn" class="btn primary sm">New Puzzle</button><button id="sudoku-hint-btn" class="btn ghost sm">Hint</button><button id="sudoku-clear-btn" class="btn ghost sm">Clear</button></div></div>
+                    <div class="info-card"><button id="sudoku-newgame-btn" class="btn primary full">New Puzzle</button></div>
                     <div class="info-card"><span class="info-label">Limit</span><div class="btn-group"><button class="btn sm sudoku-limit-btn active" data-limit="0">Off</button><button class="btn sm sudoku-limit-btn" data-limit="3">3</button><button class="btn sm sudoku-limit-btn" data-limit="5">5</button></div></div>
                     <div class="info-card"><span class="info-label">Number Pad</span><div class="sudoku-pad" id="sudoku-pad"><button class="btn sm" data-value="1">1</button><button class="btn sm" data-value="2">2</button><button class="btn sm" data-value="3">3</button><button class="btn sm" data-value="4">4</button><button class="btn sm" data-value="5">5</button><button class="btn sm" data-value="6">6</button><button class="btn sm" data-value="7">7</button><button class="btn sm" data-value="8">8</button><button class="btn sm" data-value="9">9</button><button class="btn sm sudoku-erase" data-value="0">Erase</button></div></div>
                     <div class="info-card"><span class="info-label">Stats</span><p class="muted-sm">Total: <span id="sudoku-total-solves">0</span> · Perfect: <span id="sudoku-perfect-solves">0</span></p><p class="muted-sm">Classic: <span id="sudoku-classic-streak">0</span>/<span id="sudoku-classic-best-streak">0</span></p><p class="muted-sm">Killer: <span id="sudoku-killer-streak">0</span>/<span id="sudoku-killer-best-streak">0</span></p><p class="muted-sm">Best: <span id="sudoku-best-time">--</span></p><p class="muted-sm" id="sudoku-best-detail">No record yet</p><p class="muted-sm" id="sudoku-hardest-detail"></p></div>
@@ -442,14 +395,16 @@
     </main>
 
     <!-- TETRIS -->
-    <main id="tetris-screen" class="screen">
+    <main id="tetris-screen" class="screen" hidden>
         <div class="game-layout">
             <div class="game-topbar">
-                <button class="back-btn" onclick="switchToMenu()">← Back</button>
-                <div class="game-topbar-title"><h2>Prismatic Tetris</h2><span class="subtitle">Arrow/WASD move · Q/E rotate · Space hard-drop · Shift hold</span></div>
+                <button class="back-btn" type="button">← All games</button>
+                <div class="game-topbar-title"><h2 tabindex="-1">Prismatic Tetris</h2><span class="subtitle">Arrow/WASD move · Q/E rotate · Space hard-drop · Shift hold</span></div>
                 <div class="topbar-badges"><span id="tetris-mode-label" class="topbar-badge">Marathon</span><span class="badge" id="tetris-stage-label">Stage 1</span></div>
             </div>
             <div class="game-main canvas-layout">
+                <div class="tetris-playfield">
+                <p id="tetris-feedback" class="play-feedback" aria-live="polite">Stack smart. Leave room to breathe.</p>
                 <div class="tetris-board-wrap">
                     <canvas id="tetris-canvas" width="320" height="640"></canvas>
                     <div class="tetris-overlay" id="tetris-overlay">
@@ -463,8 +418,18 @@
                         </div>
                     </div>
                 </div>
+                <div class="tetris-touch-controls" role="group" aria-label="Tetris controls">
+                    <button class="btn" data-tetris-action="left" aria-label="Move left">←</button>
+                    <button class="btn" data-tetris-action="reverse" aria-label="Rotate counterclockwise">↶</button>
+                    <button class="btn" data-tetris-action="rotate" aria-label="Rotate clockwise">↷</button>
+                    <button class="btn" data-tetris-action="right" aria-label="Move right">→</button>
+                    <button class="btn" data-tetris-action="hold">Hold</button>
+                    <button class="btn" data-tetris-action="down" aria-label="Soft drop">↓</button>
+                    <button class="btn primary tetris-drop" data-tetris-action="drop">Drop ↓</button>
+                </div>
+                </div>
                 <aside class="game-sidebar">
-                    <div class="info-card score-card"><span class="info-label">Score</span><p id="tetris-score" class="big-num">0</p><p class="muted-sm">Lines: <span id="tetris-lines">0</span> · Lv: <span id="tetris-level">1</span> · Goal: <span id="tetris-goal">-</span></p></div>
+                    <div class="info-card score-card"><span class="info-label">Score</span><p id="tetris-score" class="big-num">0</p><p class="muted-sm">Best: <span id="tetris-best">0</span></p><p class="muted-sm">Lines: <span id="tetris-lines">0</span> · Lv: <span id="tetris-level">1</span> · Goal: <span id="tetris-goal">-</span></p><progress id="tetris-progress" class="play-progress" value="0" max="100" aria-label="Run progress"></progress></div>
                     <div class="info-card"><span class="info-label">Mode &amp; Stage</span><div class="field-row" style="margin-top:6px"><label class="muted-sm">Mode</label><select id="tetris-mode-select" class="game-select"><option value="marathon">Marathon · 150 Lines</option><option value="sprint">Sprint · 40 Lines</option><option value="ultra">Ultra · 120s</option><option value="gauntlet">Gauntlet · Garbage</option></select></div><div class="field-row"><label class="muted-sm">Stage</label><select id="tetris-stage-select" class="game-select"></select></div><div class="btn-group" style="margin-top:8px"><button class="btn primary sm" id="tetris-start-btn">Start</button><button class="btn ghost sm" id="tetris-pause-btn">Pause</button><button class="btn ghost sm" id="tetris-ai-btn" title="Toggle AI auto-play (press B)">AI: OFF</button></div><p class="muted-sm" id="tetris-message">Choose a mode to begin.</p></div>
                     <div class="info-card"><span class="info-label">Meter</span><p>Combo: <span id="tetris-combo">0</span> · B2B: <span id="tetris-b2b">0</span></p><p>Energy: <span id="tetris-energy">0%</span></p><div class="tetris-energy-bar"><div class="tetris-energy-fill" id="tetris-energy-fill"></div></div><p class="muted-sm">Timer: <span id="tetris-timer">0.0s</span></p></div>
                     <div class="info-card"><span class="info-label">Next</span><div class="tetris-mini" id="tetris-next"></div></div>
@@ -476,11 +441,11 @@
     </main>
 
     <!-- POKER -->
-    <main id="poker-screen" class="screen">
+    <main id="poker-screen" class="screen" hidden>
         <div class="game-layout">
             <div class="game-topbar">
-                <button class="back-btn" onclick="switchToMenu()">← Back</button>
-                <div class="game-topbar-title"><h2>Texas Hold'em Odds</h2><span class="subtitle">Select hand and board cards, then calculate equity</span></div>
+                <button class="back-btn" type="button">← All games</button>
+                <div class="game-topbar-title"><h2 tabindex="-1">Texas Hold'em Odds</h2><span class="subtitle">Select hand and board cards, then calculate equity</span></div>
                 <span id="poker-status-label" class="topbar-badge">Ready</span>
             </div>
             <div class="game-main poker-layout-inner">
@@ -505,6 +470,7 @@
                     <p class="poker-hint" id="poker-selection-hint">Selected: Hand 1</p>
                     <div class="poker-actions">
                         <button id="poker-calc-btn" class="btn primary">Calculate</button>
+                        <button id="poker-cancel-btn" class="btn ghost" hidden>Cancel</button>
                         <button id="poker-clear-btn" class="btn ghost">Clear Selected</button>
                         <button id="poker-reset-btn" class="btn ghost">Clear All</button>
                     </div>
@@ -528,44 +494,57 @@
     </main>
 
     <!-- SHOOTER -->
-    <main id="shooter-screen" class="screen">
+    <main id="shooter-screen" class="screen" hidden>
         <div class="game-layout">
             <div class="game-topbar">
-                <button class="back-btn" onclick="switchToMenu()">← Back</button>
-                <div class="game-topbar-title"><h2>Neon Shooter</h2><span class="subtitle">← → / A D move · Space shoot · Shift bomb · P pause</span></div>
+                <button class="back-btn" type="button">← All games</button>
+                <div class="game-topbar-title"><h2 tabindex="-1">Neon Shooter</h2><span class="subtitle">Drag or ← → to steer · Auto-fire · Shift bomb · P pause</span></div>
                 <span id="shooter-level" class="topbar-badge">—</span>
             </div>
             <div class="game-main canvas-layout">
-                <div class="shooter-board-wrap">
-                    <canvas id="shooter-canvas" width="420" height="600"></canvas>
+                <div class="shooter-play-area">
+                    <div class="shooter-flight-hud" aria-label="Flight status"><span>Hull <strong id="shooter-hull-live">3 / 3</strong></span><span>Chain <strong id="shooter-combo">×1</strong></span><span>Score <strong id="shooter-score-live">0</strong></span></div>
+                    <div class="shooter-board-wrap">
+                    <canvas id="shooter-canvas" width="420" height="600" aria-label="Neon Shooter battlefield. Drag horizontally or use left and right arrows to steer." aria-describedby="shooter-control-help"></canvas>
                     <div class="shooter-overlay" id="shooter-overlay">
                         <div class="overlay-card">
-                            <p class="overlay-title" id="shooter-overlay-title">Ready?</p>
-                            <p class="overlay-desc" id="shooter-overlay-desc">Choose your level and launch!</p>
+                            <p class="overlay-title" id="shooter-overlay-title">Ready for launch</p>
+                            <p class="overlay-desc" id="shooter-overlay-desc">Steer, keep your streak, and clear the boss. Your ship fires automatically.</p>
+                            <div id="shooter-result-stats" class="shooter-result-stats" hidden></div>
                             <div class="overlay-actions">
-                                <button class="btn primary" id="shooter-overlay-primary">Play Again</button>
-                                <button class="btn ghost" id="shooter-overlay-secondary">Restart</button>
+                                <button class="btn primary" id="shooter-overlay-primary" type="button">Launch</button>
+                                <button class="btn ghost" id="shooter-overlay-secondary" type="button" hidden>Change setup</button>
                             </div>
                         </div>
                     </div>
+                    </div>
+                    <p id="shooter-message" class="shooter-flight-message" role="status">Drag the battlefield to steer. Your ship fires automatically.</p>
+                    <div class="shooter-flight-controls" aria-label="Flight controls">
+                        <button class="btn" id="shooter-left-btn" type="button" aria-label="Move left">←</button>
+                        <button class="btn" id="shooter-right-btn" type="button" aria-label="Move right">→</button>
+                        <button class="btn" id="shooter-auto-btn" type="button" aria-pressed="true">Auto: On</button>
+                        <button class="btn" id="shooter-bomb-btn" type="button" disabled>Bomb · 1</button>
+                        <button class="btn" id="shooter-pause-btn" type="button" disabled>Pause</button>
+                    </div>
+                    <p id="shooter-control-help" class="muted-sm shooter-control-help">Drag to steer · Hold ← / → or A / D · Space fires manually · Shift drops a bomb · P pauses</p>
                 </div>
                 <aside class="game-sidebar">
                     <div class="info-card score-card"><span class="info-label">Score</span><p id="shooter-score" class="big-num">0</p><p class="muted-sm">Best: <span id="shooter-highscore">0</span></p></div>
-                    <div class="info-card"><span class="info-label">Status</span><p>HP: <span id="shooter-hp">❤❤❤</span></p><p>Kills: <span id="shooter-kills">0 / 20</span></p><p>Bombs: <span id="shooter-bombs">💣</span></p><p class="muted-sm" id="shooter-bomb-cooldown">Bomb: Ready</p></div>
-                    <div class="info-card"><span class="info-label">Power-ups</span><p class="muted-sm">Spread: <span id="shooter-spread">—</span></p><p class="muted-sm">Shield: <span id="shooter-shield">—</span></p></div>
-                    <div class="info-card"><span class="info-label">Setup</span><div class="field-row" style="margin-top:8px"><label class="muted-sm">Level</label><select id="shooter-level-select" class="game-select"><option value="1">Sector 1 — Easy</option><option value="2">Sector 2</option><option value="3">Sector 3</option><option value="4">Sector 4</option><option value="5">Sector 5 — Hard</option></select></div><label class="checkbox-row" style="margin-top:8px"><input type="checkbox" id="shooter-endless-check" /><span class="muted-sm">Endless Mode</span></label><button id="shooter-start-btn" class="btn primary full" style="margin-top:10px">Start Game</button></div>
-                    <div class="info-card"><span class="info-label">Tips</span><p class="muted-sm">💛 Spread — 3-way shot<br>🩵 Shield — absorbs 1 hit<br>💚 Speed — move faster<br>Defeat the boss to advance!</p></div>
+                    <div class="info-card"><span class="info-label">Mission</span><p>Hull: <span id="shooter-hp">❤❤❤</span></p><p>Targets: <span id="shooter-kills">0 / 20</span></p><p>Bombs: <span id="shooter-bombs">1</span></p><p class="muted-sm" id="shooter-bomb-cooldown">Launch to deploy</p></div>
+                    <div class="info-card"><span class="info-label">Power-ups</span><p class="muted-sm">Spread: <span id="shooter-spread">—</span></p><p class="muted-sm">Shield: <span id="shooter-shield">—</span></p><p class="muted-sm">Speed: <span id="shooter-speed">—</span></p></div>
+                    <div class="info-card"><span class="info-label">Flight plan</span><div class="field-row" style="margin-top:8px"><label class="muted-sm" for="shooter-level-select">Starting sector</label><select id="shooter-level-select" class="game-select"><option value="1">Sector 1 — Easy</option><option value="2">Sector 2</option><option value="3">Sector 3</option><option value="4">Sector 4</option><option value="5">Sector 5 — Hard</option></select></div><label class="checkbox-row" style="margin-top:8px"><input type="checkbox" id="shooter-endless-check" /><span class="muted-sm">Endless Mode</span></label><button id="shooter-start-btn" class="btn primary full" style="margin-top:10px" type="button">Launch</button></div>
+                    <div class="info-card"><span class="info-label">Flight guide</span><p class="muted-sm">Chain target kills within 4 seconds to build up to ×4 scoring. A hull hit or escaped enemy breaks the chain.</p><p class="muted-sm">Enemies crossing the bottom damage your hull. Clear the boss to repair 1 hull and earn a bomb.</p><p class="muted-sm">Gold S: spread fire · Cyan: one-hit shield · Green: faster steering.</p></div>
                 </aside>
             </div>
         </div>
     </main>
 
     <!-- GOMOKU -->
-    <main id="gomoku-screen" class="screen">
+    <main id="gomoku-screen" class="screen" hidden>
         <div class="game-layout">
             <div class="game-topbar">
-                <button class="back-btn" onclick="switchToMenu()">← Back</button>
-                <div class="game-topbar-title"><h2>Five in a Row</h2><span class="subtitle">Click to place your stone — get 5 in a row to win</span></div>
+                <button class="back-btn" type="button">← All games</button>
+                <div class="game-topbar-title"><h2 tabindex="-1">Five in a Row</h2><span class="subtitle">Click to place your stone — get 5 in a row to win</span></div>
                 <span id="gomoku-status" class="topbar-badge">Black's turn</span>
             </div>
             <div class="game-main canvas-layout">
@@ -579,11 +558,12 @@
                         </div>
                     </div>
                 </div>
+                <div class="strategy-tools" data-for="gomoku"><div class="strategy-actions"><button id="gomoku-undo-btn" class="btn ghost" disabled>↶ Undo turn</button><button id="gomoku-hint-btn" class="btn ghost">Suggest a point</button></div><p id="gomoku-coach" role="status">Connect five. A hint looks for a win, then a block, then a stronger position.</p><small>Against AI, undo restores your turn. A completed win is removed from the score if undone.</small></div>
                 <aside class="game-sidebar">
                     <div class="info-card"><span class="info-label">Score</span><p>⚫ Black: <strong id="gomoku-black-wins">0</strong></p><p>⚪ White: <strong id="gomoku-white-wins">0</strong></p><p class="muted-sm">Moves: <span id="gomoku-move-count">0</span></p></div>
                     <div class="info-card"><span class="info-label">Mode</span><select id="gomoku-mode-select" class="game-select"><option value="pve">vs AI</option><option value="pvp">Player vs Player</option></select></div>
                     <div class="info-card"><span class="info-label">Difficulty</span><select id="gomoku-difficulty-select" class="game-select"><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select></div>
-                    <div class="info-card"><button id="gomoku-newgame-btn" class="btn primary full">New Game</button><button id="gomoku-undo-btn" class="btn ghost full" style="margin-top:8px">Undo Move</button></div>
+                    <div class="info-card"><button id="gomoku-newgame-btn" class="btn primary full">New Game</button></div>
                     <div class="info-card"><span class="info-label">Rules</span><p class="muted-sm">Place 5 stones in a row (horizontal, vertical or diagonal) to win. Black goes first.</p></div>
                 </aside>
             </div>
@@ -591,11 +571,11 @@
     </main>
 
     <!-- XIANGQI -->
-    <main id="xiangqi-screen" class="screen">
+    <main id="xiangqi-screen" class="screen" hidden>
         <div class="game-layout">
             <div class="game-topbar">
-                <button class="back-btn" onclick="switchToMenu()">← Back</button>
-                <div class="game-topbar-title"><h2>Chinese Chess · Xiangqi</h2><span class="subtitle">Click a piece to select, click destination to move</span></div>
+                <button class="back-btn" type="button">← All games</button>
+                <div class="game-topbar-title"><h2 tabindex="-1">Chinese Chess · Xiangqi</h2><span class="subtitle">Click a piece to select, click destination to move</span></div>
                 <span id="xiangqi-status" class="topbar-badge">Red's turn</span>
             </div>
             <div class="game-main canvas-layout">
@@ -609,11 +589,13 @@
                         </div>
                     </div>
                 </div>
+                <div class="strategy-tools" data-for="xiangqi"><div class="strategy-actions"><button id="xiangqi-undo-btn" class="btn ghost" disabled>↶ Undo turn</button><button id="xiangqi-hint-btn" class="btn ghost">Suggest a move</button></div><p id="xiangqi-coach" role="status">Select a piece to see legal destinations. Undo restores your whole turn against AI.</p><small>The highlighted route is a suggestion. Click its destination to play it.</small></div>
                 <aside class="game-sidebar">
                     <div class="info-card"><span class="info-label">Captured</span><p class="muted-sm">Red: <span id="xiangqi-captured-red"></span></p><p class="muted-sm">Black: <span id="xiangqi-captured-black"></span></p></div>
                     <div class="info-card"><span class="info-label">Mode</span><select id="xiangqi-mode-select" class="game-select"><option value="pve">vs AI (you are Red)</option><option value="pvp">Player vs Player</option></select></div>
                     <div class="info-card"><span class="info-label">Difficulty</span><select id="xiangqi-difficulty-select" class="game-select"><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select></div>
                     <div class="info-card"><button id="xiangqi-newgame-btn" class="btn primary full">New Game</button></div>
+                    <div class="info-card"><span class="info-label">Recent moves</span><div id="xiangqi-move-history" class="move-history"></div></div>
                     <div class="info-card"><span class="info-label">Pieces</span><p class="muted-sm">帅/将 General · 仕/士 Advisor · 相/象 Elephant<br>车/車 Chariot · 马/馬 Horse · 炮/砲 Cannon<br>兵/卒 Soldier</p></div>
                 </aside>
             </div>
@@ -621,11 +603,11 @@
     </main>
 
     <!-- CHESS -->
-    <main id="chess-screen" class="screen">
+    <main id="chess-screen" class="screen" hidden>
         <div class="game-layout">
             <div class="game-topbar">
-                <button class="back-btn" onclick="switchToMenu()">← Back</button>
-                <div class="game-topbar-title"><h2>Chess</h2><span class="subtitle">Click a piece to select, click destination to move</span></div>
+                <button class="back-btn" type="button">← All games</button>
+                <div class="game-topbar-title"><h2 tabindex="-1">Chess</h2><span class="subtitle">Click a piece to select, click destination to move</span></div>
                 <span id="chess-status" class="topbar-badge">White's turn</span>
             </div>
             <div class="game-main canvas-layout">
@@ -639,6 +621,7 @@
                         </div>
                     </div>
                 </div>
+                <div class="strategy-tools" data-for="chess"><div class="strategy-actions"><button id="chess-undo-btn" class="btn ghost" disabled>↶ Undo turn</button><button id="chess-hint-btn" class="btn ghost">Suggest a move</button></div><p id="chess-coach" role="status">Select a piece to see legal destinations. Hint suggests a move; Undo lets you explore.</p><small>Against AI, undo restores your turn, captures and special move rights.</small></div>
                 <aside class="game-sidebar">
                     <div class="info-card"><span class="info-label">Captured</span><p class="muted-sm">White: <span id="chess-captured-white"></span></p><p class="muted-sm">Black: <span id="chess-captured-black"></span></p></div>
                     <div class="info-card"><span class="info-label">Mode</span><select id="chess-mode-select" class="game-select"><option value="pve">vs AI (you are White)</option><option value="pvp">Player vs Player</option></select></div>
@@ -650,21 +633,9 @@
         </div>
     </main>
 
-    <footer class="app-footer">Wenhao's Web Arcade · HTML5 Canvas</footer>
+    <footer class="app-footer"><a href="#/">Wenhao’s Arcade</a><span>Built for the joy of play.</span><a href="https://github.com/wenhaoquestion/My-Game-Web" target="_blank" rel="noopener noreferrer">View on GitHub ↗</a></footer>
+    <div id="app-announcement" class="sr-only" role="status" aria-live="polite"></div>
 </div>
 
-<script src="snake.js"></script>
-<script src="2048.js"></script>
-<script src="merge10.js"></script>
-<script src="coin.js"></script>
-<script src="sudoku.js"></script>
-<script src="tetris.js"></script>
-<script src="poker.js"></script>
-<script src="shooter.js"></script>
-<script src="gomoku.js"></script>
-<script src="xiangqi.js"></script>
-<script src="chess.js"></script>
-<script src="main.js"></script>
-<script src="ambient.js"></script>
 </body>
 </html>
